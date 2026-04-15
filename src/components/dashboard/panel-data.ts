@@ -1,6 +1,7 @@
 import type { DashboardPanelId } from '@/lib/auth/config';
+import { buildTheaterApiPath, type TheaterId } from '@/lib/theater';
 
-export const PANEL_DATA_ENDPOINTS: Partial<Record<DashboardPanelId, string[]>> = {
+const PANEL_DATA_PATHS: Partial<Record<DashboardPanelId, string[]>> = {
   news: ['/api/news'],
   alerts: ['/api/alerts'],
   telegram: ['/api/telegram'],
@@ -15,3 +16,16 @@ export const PANEL_DATA_ENDPOINTS: Partial<Record<DashboardPanelId, string[]>> =
   oil: ['/api/oil'],
   satellite: ['/api/fires'],
 };
+
+export function getPanelDataEndpoints(theater: TheaterId): Partial<Record<DashboardPanelId, string[]>> {
+  return Object.fromEntries(
+    Object.entries(PANEL_DATA_PATHS).map(([panelId, endpoints]) => [
+      panelId,
+      (endpoints ?? []).map((endpoint) => buildTheaterApiPath(endpoint, theater)),
+    ]),
+  ) as Partial<Record<DashboardPanelId, string[]>>;
+}
+
+export function getPanelDataPaths(panelId: DashboardPanelId, theater: TheaterId) {
+  return getPanelDataEndpoints(theater)[panelId] ?? [];
+}

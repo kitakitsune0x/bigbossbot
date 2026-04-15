@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { useDataFeed, timeAgo, useTick } from '@/lib/hooks';
+import { useMemo } from 'react';
+import { useDashboardPreferences } from '@/components/dashboard/PreferencesProvider';
+import { useCurrentTheater, useTheaterDataFeed } from '@/components/dashboard/useTheaterDataFeed';
+import { timeAgo, useTick } from '@/lib/hooks';
 
 interface CountryEvent {
   title: string;
@@ -32,17 +34,19 @@ const LEVEL_COLOR: Record<string, string> = {
 };
 
 export default function RegionalAlertsPanel() {
-  const { data, loading } = useDataFeed<RegionalData>('/api/regional-alerts', 60000);
+  const theater = useCurrentTheater();
+  const { preferences, setRegionalAlertsCollapsed } = useDashboardPreferences();
+  const { data, loading } = useTheaterDataFeed<RegionalData>('/api/regional-alerts', 60000);
   useTick(15000);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const collapsedCountries = preferences.uiState.regionalAlertsCollapsed[theater];
+  const collapsed = useMemo(() => new Set(collapsedCountries), [collapsedCountries]);
 
   const toggleCollapse = (country: string) => {
-    setCollapsed(prev => {
-      const next = new Set(prev);
-      if (next.has(country)) next.delete(country);
-      else next.add(country);
-      return next;
-    });
+    const next = collapsed.has(country)
+      ? collapsedCountries.filter((name) => name !== country)
+      : [...collapsedCountries, country];
+
+    void setRegionalAlertsCollapsed(theater, next);
   };
 
   const sorted = data?.alerts ? [...data.alerts].sort((a, b) => {

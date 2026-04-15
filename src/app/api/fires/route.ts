@@ -1,19 +1,44 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-import { authorizeApiSession } from '@/lib/auth/session';
+import { authorizeReadApiAccess } from '@/lib/auth/session';
 import { fetchWithTimeout } from '@/lib/fetcher';
+import { getTheaterFromRequest, type TheaterId } from '@/lib/theater';
 
 export const dynamic = 'force-dynamic';
+
+const FIRE_BOUNDS: Record<TheaterId, {
+  label: string;
+  minLat: number;
+  maxLat: number;
+  minLon: number;
+  maxLon: number;
+}> = {
+  'middle-east': {
+    label: 'Middle East',
+    minLat: 20,
+    maxLat: 42,
+    minLon: 25,
+    maxLon: 65,
+  },
+  ukraine: {
+    label: 'Ukraine theater',
+    minLat: 43,
+    maxLat: 57,
+    minLon: 20,
+    maxLon: 42,
+  },
+};
 
 // NASA FIRMS (Fire Information for Resource Management System)
 // Detects thermal anomalies from satellites - includes fires AND large explosions
 // Free, no API key needed for the open data CSV
-export async function GET() {
-  const auth = await authorizeApiSession();
+export async function GET(request: NextRequest) {
+  const auth = await authorizeReadApiAccess();
   if (auth instanceof NextResponse) return auth;
+  const theater = getTheaterFromRequest(request);
+  const bounds = FIRE_BOUNDS[theater];
 
   try {
-    // Download global 24h fire data and filter to Middle East region
     const url = 'https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv';
 
     const res = await fetchWithTimeout(url, { timeout: 30000 });
@@ -32,7 +57,6 @@ export async function GET() {
     const frpIdx = header.indexOf('frp'); // Fire Radiative Power - higher = bigger
     const dayIdx = header.indexOf('daynight');
 
-    // Filter to Middle East bounding box: lat 20-42, lon 25-65
     const events = lines.slice(1)
       .map(line => {
         const cols = line.split(',');
@@ -41,8 +65,7 @@ export async function GET() {
         const lat = parseFloat(cols[latIdx]);
         const lon = parseFloat(cols[lonIdx]);
 
-        // Middle East filter
-        if (lat < 20 || lat > 42 || lon < 25 || lon > 65) return null;
+        if (lat < bounds.minLat || lat > bounds.maxLat || lon < bounds.minLon || lon > bounds.maxLon) return null;
 
         const brightness = parseFloat(cols[brightIdx]);
         const frp = parseFloat(cols[frpIdx]);
@@ -84,6 +107,7 @@ export async function GET() {
       possibleExplosions,
       events,
       source: 'NASA FIRMS VIIRS',
+      theater: bounds.label,
       updated: new Date().toISOString(),
     }, {
       headers: { 'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=300' },

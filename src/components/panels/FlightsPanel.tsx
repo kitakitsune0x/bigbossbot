@@ -1,6 +1,6 @@
 'use client';
 
-import { useDataFeed } from '@/lib/hooks';
+import { useTheaterDataFeed } from '@/components/dashboard/useTheaterDataFeed';
 
 interface MilFlight {
   icao24: string;
@@ -35,7 +35,7 @@ function focusOnMapTarget(id: string, lat: number, lon: number, type: 'aircraft'
 }
 
 export default function FlightsPanel() {
-  const { data, loading } = useDataFeed<FlightDataResponse>('/api/flights', 180000);
+  const { data, loading } = useTheaterDataFeed<FlightDataResponse>('/api/flights', 180000);
 
   return (
     <div className="flex h-full flex-col bg-card">

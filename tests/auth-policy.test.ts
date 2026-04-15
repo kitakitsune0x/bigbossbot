@@ -11,9 +11,10 @@ test('shouldExtendSession only rotates after the rolling window', () => {
   assert.equal(shouldExtendSession(now - rollingWindowMs - 1, now, rollingWindowMs), true);
 });
 
-test('resolveAdminManagedStatus keeps active users pending until 2FA is verified', () => {
-  assert.equal(resolveAdminManagedStatus('active', false), 'pending_2fa_setup');
-  assert.equal(resolveAdminManagedStatus('active', true), 'active');
+test('resolveAdminManagedStatus only forces pending when global 2FA is required', () => {
+  assert.equal(resolveAdminManagedStatus('active', false, true), 'pending_2fa_setup');
+  assert.equal(resolveAdminManagedStatus('active', false, false), 'active');
+  assert.equal(resolveAdminManagedStatus('active', true, true), 'active');
   assert.equal(resolveAdminManagedStatus('disabled', false), 'disabled');
   assert.equal(resolveAdminManagedStatus(undefined, true), undefined);
 });

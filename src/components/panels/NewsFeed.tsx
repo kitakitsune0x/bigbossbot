@@ -1,10 +1,11 @@
 'use client';
 
-import { useDataFeed, timeAgo, useTick } from '@/lib/hooks';
+import { timeAgo, useTick } from '@/lib/hooks';
+import { useTheaterDataFeed } from '@/components/dashboard/useTheaterDataFeed';
 import type { NewsItem } from '@/types';
 
 export default function NewsFeed() {
-  const { data: news, loading, lastUpdated } = useDataFeed<NewsItem[]>('/api/news', 90000);
+  const { data: news, loading, lastUpdated } = useTheaterDataFeed<NewsItem[]>('/api/news', 90000);
   useTick(15000);
 
   return (

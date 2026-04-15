@@ -18,6 +18,10 @@ enum AccountStatus {
   disabled
 }
 
+enum ApiTokenScope {
+  read_intel
+}
+
 model User {
   id                String         @id @default(cuid())
   username          String
@@ -34,6 +38,7 @@ model User {
   recoveryCodes     RecoveryCode[]
   preferences       UserPreference?
   auditLogs         AuditLog[]
+  apiTokens         ApiToken[]
 
   @@index([role])
   @@index([status])
@@ -88,6 +93,8 @@ model UserPreference {
   desktopNotificationsEnabled Boolean  @default(true)
   hiddenPanels                Json     @default("[]")
   panelOrder                  Json     @default("[]")
+  theater                     String   @default("middle-east")
+  uiState                     Json     @default("{}")
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt
   user                        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -107,4 +114,21 @@ model AuditLog {
   @@index([userId, createdAt])
   @@index([usernameCanonical, createdAt])
   @@index([action, createdAt])
+}
+
+model ApiToken {
+  id          String        @id @default(cuid())
+  userId      String
+  name        String
+  tokenHash   String        @unique
+  tokenPrefix String
+  scope       ApiTokenScope @default(read_intel)
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, revokedAt])
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useDataFeed, timeAgo } from '@/lib/hooks';
+import { timeAgo } from '@/lib/hooks';
+import { useTheaterDataFeed } from '@/components/dashboard/useTheaterDataFeed';
 
 interface TelegramPost {
   channel: string;
@@ -19,7 +20,7 @@ interface TelegramData {
 }
 
 export default function TelegramPanel() {
-  const { data, loading } = useDataFeed<TelegramData>('/api/telegram', 60000);
+  const { data, loading } = useTheaterDataFeed<TelegramData>('/api/telegram', 60000);
 
   return (
     <div className="flex h-full flex-col bg-card">

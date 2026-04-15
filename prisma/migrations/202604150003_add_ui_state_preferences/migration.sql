@@ -1,0 +1,2 @@
+ALTER TABLE "UserPreference"
+ADD COLUMN "uiState" JSONB NOT NULL DEFAULT '{}';

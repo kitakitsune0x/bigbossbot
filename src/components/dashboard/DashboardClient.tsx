@@ -217,7 +217,7 @@ function DashboardGrid() {
             if (!Component) return null;
             return (
               <SortablePanel key={id} id={id} spotlighted={spotlightId === id}>
-                <div className="h-full border border-border overflow-hidden bg-card">
+                <div className="relative isolate h-full overflow-hidden border border-border bg-card [contain:paint]">
                   <Component className="h-full" />
                 </div>
               </SortablePanel>

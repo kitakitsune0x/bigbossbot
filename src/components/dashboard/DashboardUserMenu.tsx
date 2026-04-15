@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Settings2, X, GripVertical, Eye, EyeOff } from 'lucide-react';
-import { DASHBOARD_PANEL_IDS, DASHBOARD_PANEL_LABELS, type DashboardPanelId } from '@/lib/auth/config';
+import { Settings2, X, Eye, EyeOff } from 'lucide-react';
+import { DASHBOARD_PANEL_IDS, DASHBOARD_PANEL_LABELS } from '@/lib/auth/config';
 import { useDashboardPreferences } from '@/components/dashboard/PreferencesProvider';
 import { PANEL_ICONS } from '@/components/dashboard/CommandPalette';
 import { Switch } from '@/components/ui/switch';
+import { THEATER_META, THEATER_IDS } from '@/lib/theater';
 
 export default function DashboardUserMenu() {
   const [open, setOpen] = useState(false);
@@ -16,6 +17,7 @@ export default function DashboardUserMenu() {
     togglePanel,
     setAlertSoundEnabled,
     setDesktopNotificationsEnabled,
+    setTheater,
     visiblePanels,
   } = useDashboardPreferences();
 
@@ -49,6 +51,26 @@ export default function DashboardUserMenu() {
             </div>
 
             <div className="border-b border-border px-3 py-2.5 space-y-2.5">
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Theater</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {THEATER_IDS.map((theaterId) => (
+                    <button
+                      key={theaterId}
+                      onClick={() => void setTheater(theaterId)}
+                      disabled={saving}
+                      className={`rounded border px-2 py-1.5 text-[11px] transition-colors ${
+                        preferences.theater === theaterId
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
+                      }`}
+                    >
+                      {THEATER_META[theaterId].label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <label className="flex items-center justify-between cursor-pointer">
                 <span className="text-[12px]">Alert sound</span>
                 <Switch

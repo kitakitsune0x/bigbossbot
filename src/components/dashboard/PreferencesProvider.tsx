@@ -1,8 +1,9 @@
 'use client';
 
 import { createContext, useContext, useMemo, useState, useCallback } from 'react';
-import type { UserPreferences } from '@/types/auth';
+import type { ConflictMapPreferences, UserPreferences } from '@/types/auth';
 import { DASHBOARD_PANEL_IDS, type DashboardPanelId } from '@/lib/auth/config';
+import type { TheaterId } from '@/lib/theater';
 
 type PreferencesContextValue = {
   preferences: UserPreferences;
@@ -11,6 +12,9 @@ type PreferencesContextValue = {
   togglePanel: (panelId: DashboardPanelId) => Promise<void>;
   setAlertSoundEnabled: (value: boolean) => Promise<void>;
   setDesktopNotificationsEnabled: (value: boolean) => Promise<void>;
+  setTheater: (value: TheaterId) => Promise<void>;
+  setConflictMapPreferences: (theater: TheaterId, value: ConflictMapPreferences) => Promise<void>;
+  setRegionalAlertsCollapsed: (theater: TheaterId, value: string[]) => Promise<void>;
   panelOrder: DashboardPanelId[];
   setPanelOrder: (order: DashboardPanelId[]) => Promise<void>;
   visiblePanels: DashboardPanelId[];
@@ -98,6 +102,36 @@ export function PreferencesProvider({
         await persist({
           ...preferences,
           desktopNotificationsEnabled: value,
+        });
+      },
+      setTheater: async (value) => {
+        await persist({
+          ...preferences,
+          theater: value,
+        });
+      },
+      setConflictMapPreferences: async (theater, value) => {
+        await persist({
+          ...preferences,
+          uiState: {
+            ...preferences.uiState,
+            conflictMap: {
+              ...preferences.uiState.conflictMap,
+              [theater]: value,
+            },
+          },
+        });
+      },
+      setRegionalAlertsCollapsed: async (theater, value) => {
+        await persist({
+          ...preferences,
+          uiState: {
+            ...preferences.uiState,
+            regionalAlertsCollapsed: {
+              ...preferences.uiState.regionalAlertsCollapsed,
+              [theater]: value,
+            },
+          },
         });
       },
       panelOrder,

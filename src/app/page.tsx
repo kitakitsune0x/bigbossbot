@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { AUTH_REQUIRE_2FA } from '@/lib/auth/config';
 import { getCurrentSessionContext } from '@/lib/auth/service';
 
 export default async function HomePage() {
@@ -9,7 +10,7 @@ export default async function HomePage() {
   }
 
   if (session.status === 'pending_2fa_setup') {
-    redirect('/setup-2fa');
+    redirect(AUTH_REQUIRE_2FA ? '/setup-2fa' : '/dashboard');
   }
 
   if (session.status === 'active') {

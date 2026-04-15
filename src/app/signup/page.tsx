@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import SignupForm from '@/components/auth/SignupForm';
 import BrandLogo from '@/components/layout/BrandLogo';
-import { APP_NAME } from '@/lib/auth/config';
+import { APP_NAME, AUTH_REQUIRE_2FA } from '@/lib/auth/config';
 import { getCurrentSessionContext } from '@/lib/auth/service';
 
 export default async function SignupPage() {
@@ -12,7 +12,7 @@ export default async function SignupPage() {
   }
 
   if (session?.status === 'pending_2fa_setup') {
-    redirect('/setup-2fa');
+    redirect(AUTH_REQUIRE_2FA ? '/setup-2fa' : '/dashboard');
   }
 
   return (
@@ -25,7 +25,10 @@ export default async function SignupPage() {
           </div>
           <h1 className="text-lg font-semibold mt-4">Create account</h1>
           <p className="text-sm text-muted-foreground">
-            Register for {APP_NAME}. 2FA setup required before dashboard access.
+            Register for {APP_NAME}.{' '}
+            {AUTH_REQUIRE_2FA
+              ? 'Authenticator setup is required before dashboard access.'
+              : 'Authenticator setup is optional and can be enabled after sign-in.'}
           </p>
         </div>
         <SignupForm />

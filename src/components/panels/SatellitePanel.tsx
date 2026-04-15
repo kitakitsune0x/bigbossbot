@@ -1,6 +1,6 @@
 'use client';
 
-import { useDataFeed } from '@/lib/hooks';
+import { useCurrentTheater, useTheaterDataFeed } from '@/components/dashboard/useTheaterDataFeed';
 
 interface FireEvent {
   lat: number;
@@ -24,6 +24,12 @@ interface FIRMSData {
 }
 
 function getRegion(lat: number, lon: number): string {
+  if (lat > 49 && lat < 53 && lon > 30 && lon < 35) return 'Kyiv region';
+  if (lat > 46 && lat < 51 && lon > 22 && lon < 40) return 'Ukraine';
+  if (lat > 51 && lat < 57 && lon > 27 && lon < 33) return 'Belarus';
+  if (lat > 43 && lat < 49 && lon > 34 && lon < 40) return 'Crimea / Black Sea';
+  if (lat > 45 && lat < 57 && lon > 34 && lon < 41.5) return 'Western Russia';
+  if (lat > 45 && lat < 49 && lon > 20 && lon < 30) return 'Romania / Moldova';
   if (lat > 36 && lon > 36 && lon < 45) return 'Turkey';
   if (lat > 29 && lat < 34 && lon > 34 && lon < 36) return 'Israel';
   if (lat > 24 && lat < 38 && lon > 44 && lon < 64) return 'Iran';
@@ -48,7 +54,8 @@ const INTENSITY_COLOR: Record<string, string> = {
 };
 
 export default function SatellitePanel() {
-  const { data, loading } = useDataFeed<FIRMSData>('/api/fires', 600000);
+  const theater = useCurrentTheater();
+  const { data, loading } = useTheaterDataFeed<FIRMSData>('/api/fires', 600000);
 
   return (
     <div className="flex h-full flex-col bg-card">
@@ -77,7 +84,9 @@ export default function SatellitePanel() {
             <div key={i} className="h-7 mx-3 my-1 bg-secondary/30 animate-pulse" />
           ))
         ) : data?.events.length === 0 ? (
-          <p className="py-8 text-center text-[12px] text-muted-foreground">No thermal anomalies detected in region</p>
+          <p className="py-8 text-center text-[12px] text-muted-foreground">
+            No thermal anomalies detected in the {theater === 'ukraine' ? 'Ukraine theater' : 'region'}
+          </p>
         ) : (
           data?.events.slice(0, 30).map((event, i) => {
             const region = getRegion(event.lat, event.lon);

@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-import { authorizeApiSession } from '@/lib/auth/session';
+import { authorizeReadApiAccess } from '@/lib/auth/session';
 import { fetchWithTimeout } from '@/lib/fetcher';
+import { getTheaterFromRequest, type TheaterId } from '@/lib/theater';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,9 +66,10 @@ const SHIP_TYPE_NAMES: Record<number, string> = {
   80: 'Tanker',
 };
 
-export async function GET() {
-  const auth = await authorizeApiSession();
+export async function GET(request: NextRequest) {
+  const auth = await authorizeReadApiAccess();
   if (auth instanceof NextResponse) return auth;
+  const theater = getTheaterFromRequest(request);
 
   try {
     // Use the free AISHub API or similar free AIS data source
@@ -81,12 +83,17 @@ export async function GET() {
     // or the MLIT (Maritime) open data feeds
 
     // For the Persian Gulf / Red Sea / Eastern Mediterranean
-    const regions = [
-      { name: 'Persian Gulf', bbox: '48,24,57,30' },
-      { name: 'Red Sea', bbox: '32,12,44,30' },
-      { name: 'Eastern Med', bbox: '30,30,36,37' },
-      { name: 'Arabian Sea', bbox: '55,12,68,26' },
-    ];
+    const regions = theater === 'ukraine'
+      ? [
+          { name: 'Black Sea', bbox: '27,41,41,47' },
+          { name: 'Sea of Azov', bbox: '34,45,39,48' },
+        ]
+      : [
+          { name: 'Persian Gulf', bbox: '48,24,57,30' },
+          { name: 'Red Sea', bbox: '32,12,44,30' },
+          { name: 'Eastern Med', bbox: '30,30,36,37' },
+          { name: 'Arabian Sea', bbox: '55,12,68,26' },
+        ];
 
     // Try AISHub free endpoint (requires registration but free)
     // Fallback to curated known positions from public OSINT
@@ -105,7 +112,7 @@ export async function GET() {
 
     // Compile known naval deployments from OSINT sources
     // These are updated based on public Navy press releases and OSINT tracking
-    ships = await getOSINTNavalPositions();
+    ships = await getOSINTNavalPositions(theater);
 
     return NextResponse.json({
       regions,
@@ -137,7 +144,60 @@ interface NavalVessel {
   group?: string;
 }
 
-async function getOSINTNavalPositions(): Promise<NavalVessel[]> {
+async function getOSINTNavalPositions(theater: TheaterId): Promise<NavalVessel[]> {
+  if (theater === 'ukraine') {
+    return [
+      {
+        name: 'Admiral Makarov',
+        hull: 'Frigate',
+        type: 'Frigate',
+        class: 'Admiral Grigorovich-class',
+        navy: 'Russian Navy',
+        lat: 44.8,
+        lon: 35.2,
+        status: 'Deployed',
+        region: 'Black Sea',
+        lastReported: new Date().toISOString(),
+      },
+      {
+        name: 'Black Sea Patrol Group',
+        hull: 'Various',
+        type: 'Patrol Craft',
+        class: 'Various',
+        navy: 'Russian Navy',
+        lat: 45.1,
+        lon: 36.4,
+        status: 'Active',
+        region: 'Sea of Azov',
+        lastReported: new Date().toISOString(),
+      },
+      {
+        name: 'Romanian Black Sea Group',
+        hull: 'Various',
+        type: 'Frigate',
+        class: 'Mixed surface group',
+        navy: 'Romanian Navy',
+        lat: 44.0,
+        lon: 29.4,
+        status: 'Patrol',
+        region: 'Western Black Sea',
+        lastReported: new Date().toISOString(),
+      },
+      {
+        name: 'Turkish Black Sea Patrol',
+        hull: 'Various',
+        type: 'Corvette',
+        class: 'Mixed surface group',
+        navy: 'Turkish Navy',
+        lat: 42.7,
+        lon: 31.8,
+        status: 'Patrol',
+        region: 'Southern Black Sea',
+        lastReported: new Date().toISOString(),
+      },
+    ];
+  }
+
   // Known naval deployments (updated from public DoD/Navy press releases)
   // These approximate positions are from publicly available information
   const knownDeployments: NavalVessel[] = [

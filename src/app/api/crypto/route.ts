@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { authorizeApiSession } from '@/lib/auth/session';
+import { authorizeReadApiAccess } from '@/lib/auth/session';
 import { fetchWithTimeout } from '@/lib/fetcher';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +16,7 @@ const COIN_META: Record<string, { name: string; symbol: string }> = {
 };
 
 export async function GET() {
-  const auth = await authorizeApiSession();
+  const auth = await authorizeReadApiAccess();
   if (auth instanceof NextResponse) return auth;
 
   try {

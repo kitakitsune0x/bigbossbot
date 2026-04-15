@@ -132,6 +132,7 @@ export async function setupTotpAction(_: FormState, formData: FormData): Promise
   }
 
   revalidatePath('/dashboard');
+  revalidatePath('/account/settings');
   return {
     success: 'Two-factor authentication is now active.',
     recoveryCodes: result.recoveryCodes,
@@ -170,7 +171,7 @@ export async function changePasswordAction(_: FormState, formData: FormData): Pr
     };
   }
 
-  revalidatePath('/account/security');
+  revalidatePath('/account/settings');
   return {
     success: 'Password updated. Other sessions were signed out.',
   };
@@ -186,7 +187,7 @@ export async function regenerateRecoveryCodesAction(_: FormState, __: FormData):
     };
   }
 
-  revalidatePath('/account/security');
+  revalidatePath('/account/settings');
   return {
     success: 'Fresh recovery codes are ready. Replace your previous set.',
     recoveryCodes: result.recoveryCodes,
@@ -196,7 +197,7 @@ export async function regenerateRecoveryCodesAction(_: FormState, __: FormData):
 export async function revokeOtherSessionsAction(_: FormState, __: FormData): Promise<FormState> {
   const session = await requirePageSession();
   await revokeOtherSessions(session.userId, session.sessionId);
-  revalidatePath('/account/security');
+  revalidatePath('/account/settings');
 
   return {
     success: 'Other sessions were revoked.',

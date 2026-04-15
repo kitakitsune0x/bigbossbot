@@ -1,20 +1,108 @@
-import { NextResponse } from 'next/server';
-import { authorizeApiSession } from '@/lib/auth/session';
+import { NextRequest, NextResponse } from 'next/server';
+import { authorizeReadApiAccess } from '@/lib/auth/session';
 import { fetchWithTimeout, parseXML, getTextContent } from '@/lib/fetcher';
+import { getTheaterFromRequest, type TheaterId } from '@/lib/theater';
 import type { ConflictEvent } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
-// Two Google News queries: general conflict + specific strike locations
-export async function GET() {
-  const auth = await authorizeApiSession();
-  if (auth instanceof NextResponse) return auth;
-
-  const queries = [
+const CONFLICT_QUERIES: Record<TheaterId, string[]> = {
+  'middle-east': [
     'Iran Israel war military conflict strike attack',
     'missile OR rocket OR drone strike OR attack Arad OR Dimona OR "Tel Aviv" OR Haifa OR Eilat OR Tehran OR Isfahan OR Beirut OR "South Pars" OR Natanz OR "Diego Garcia"',
-  ];
+  ],
+  ukraine: [
+    'Russia Ukraine war military conflict strike attack',
+    'missile OR drone OR artillery Ukraine OR Kyiv OR Kharkiv OR Odesa OR Dnipro OR Zaporizhzhia OR Sumy OR Crimea OR Sevastopol OR Belgorod OR Kursk',
+  ],
+};
 
+const LOCATION_MATCHERS: Record<TheaterId, Array<[string, string]>> = {
+  'middle-east': [
+    ['arad', 'Arad, Israel'],
+    ['dimona', 'Dimona, Israel'],
+    ['nuclear town', 'Dimona, Israel'],
+    ['tel aviv', 'Tel Aviv, Israel'],
+    ['haifa', 'Haifa, Israel'],
+    ['eilat', 'Eilat, Israel'],
+    ['ashkelon', 'Ashkelon, Israel'],
+    ['ashdod', 'Ashdod, Israel'],
+    ['negev', 'Negev, Israel'],
+    ['natanz', 'Natanz, Iran'],
+    ['isfahan', 'Isfahan, Iran'],
+    ['tehran', 'Tehran, Iran'],
+    ['south pars', 'South Pars, Iran'],
+    ['bushehr', 'Bushehr, Iran'],
+    ['tabriz', 'Tabriz, Iran'],
+    ['beirut', 'Beirut, Lebanon'],
+    ['lebanon', 'Lebanon'],
+    ['damascus', 'Damascus, Syria'],
+    ['syria', 'Syria'],
+    ['baghdad', 'Baghdad, Iraq'],
+    ['iraq', 'Iraq'],
+    ['diego garcia', 'Diego Garcia'],
+    ['qatar', 'Qatar'],
+    ['doha', 'Qatar'],
+    ['kuwait', 'Kuwait'],
+    ['saudi', 'Saudi Arabia'],
+    ['yemen', 'Yemen'],
+    ['houthi', 'Yemen'],
+    ['gaza', 'Gaza'],
+    ['israel', 'Israel'],
+    ['iran', 'Iran'],
+  ],
+  ukraine: [
+    ['kyiv', 'Kyiv, Ukraine'],
+    ['kiev', 'Kyiv, Ukraine'],
+    ['kharkiv', 'Kharkiv, Ukraine'],
+    ['odesa', 'Odesa, Ukraine'],
+    ['odessa', 'Odesa, Ukraine'],
+    ['dnipro', 'Dnipro, Ukraine'],
+    ['zaporizhzhia', 'Zaporizhzhia, Ukraine'],
+    ['sumy', 'Sumy, Ukraine'],
+    ['chernihiv', 'Chernihiv, Ukraine'],
+    ['mykolaiv', 'Mykolaiv, Ukraine'],
+    ['kherson', 'Kherson, Ukraine'],
+    ['donetsk', 'Donetsk'],
+    ['luhansk', 'Luhansk'],
+    ['crimea', 'Crimea'],
+    ['sevastopol', 'Sevastopol, Crimea'],
+    ['belgorod', 'Belgorod, Russia'],
+    ['kursk', 'Kursk, Russia'],
+    ['bryansk', 'Bryansk, Russia'],
+    ['black sea', 'Black Sea'],
+    ['ukraine', 'Ukraine'],
+    ['russia', 'Russia'],
+  ],
+};
+
+function classifyEventType(text: string) {
+  if (text.match(/missile|strike|attack|bomb|airstrike|struck|hit|shell|rocket fire/)) return 'STRIKE';
+  if (text.match(/intercept|iron dome|defense|defend|shoot down|air raid defense/)) return 'DEFENSE';
+  if (text.match(/troop|deploy|military|soldier|force/)) return 'MILITARY';
+  if (text.match(/sanction|diplomacy|negotiat|ceasefire|talk/)) return 'DIPLOMATIC';
+  if (text.match(/nuclear|enrichment|iaea|uranium|reactor/)) return 'NUCLEAR';
+  if (text.match(/drone|uav|shahed/)) return 'DRONE';
+  return 'REPORT';
+}
+
+function resolveLocation(text: string, theater: TheaterId) {
+  const matchers = LOCATION_MATCHERS[theater];
+  const fallback = theater === 'ukraine' ? 'Ukraine theater' : 'Middle East';
+
+  for (const [needle, label] of matchers) {
+    if (text.includes(needle)) return label;
+  }
+
+  return fallback;
+}
+
+export async function GET(request: NextRequest) {
+  const auth = await authorizeReadApiAccess();
+  if (auth instanceof NextResponse) return auth;
+
+  const theater = getTheaterFromRequest(request);
+  const queries = CONFLICT_QUERIES[theater];
   const allEvents: ConflictEvent[] = [];
   const seenTitles = new Set<string>();
 
@@ -38,55 +126,17 @@ export async function GET() {
         const source = dashIdx > 0 ? title.substring(dashIdx + 3) : 'Google News';
         if (dashIdx > 0) title = title.substring(0, dashIdx);
 
-        // Dedup
         const key = title.toLowerCase().trim().substring(0, 50);
         if (seenTitles.has(key)) continue;
         seenTitles.add(key);
 
-        const t = title.toLowerCase();
-        let type = 'REPORT';
-        if (t.match(/missile|strike|attack|bomb|airstrike|struck|hit|shell|rocket fire/)) type = 'STRIKE';
-        else if (t.match(/intercept|iron dome|defense|defend|shoot down/)) type = 'DEFENSE';
-        else if (t.match(/troop|deploy|military|soldier|force/)) type = 'MILITARY';
-        else if (t.match(/sanction|diplomacy|negotiat|ceasefire|talk/)) type = 'DIPLOMATIC';
-        else if (t.match(/nuclear|enrichment|iaea|uranium/)) type = 'NUCLEAR';
-        else if (t.match(/drone|uav|shahed/)) type = 'DRONE';
-
-        let location = 'Middle East';
-        if (t.includes('arad')) location = 'Arad, Israel';
-        else if (t.includes('dimona') || t.includes('nuclear town')) location = 'Dimona, Israel';
-        else if (t.includes('tel aviv')) location = 'Tel Aviv, Israel';
-        else if (t.includes('haifa')) location = 'Haifa, Israel';
-        else if (t.includes('eilat')) location = 'Eilat, Israel';
-        else if (t.includes('ashkelon')) location = 'Ashkelon, Israel';
-        else if (t.includes('ashdod')) location = 'Ashdod, Israel';
-        else if (t.includes('negev')) location = 'Negev, Israel';
-        else if (t.includes('natanz')) location = 'Natanz, Iran';
-        else if (t.includes('isfahan')) location = 'Isfahan, Iran';
-        else if (t.includes('tehran')) location = 'Tehran, Iran';
-        else if (t.includes('south pars')) location = 'South Pars, Iran';
-        else if (t.includes('bushehr')) location = 'Bushehr, Iran';
-        else if (t.includes('tabriz')) location = 'Tabriz, Iran';
-        else if (t.includes('beirut')) location = 'Beirut, Lebanon';
-        else if (t.includes('lebanon')) location = 'Lebanon';
-        else if (t.includes('damascus')) location = 'Damascus, Syria';
-        else if (t.includes('syria')) location = 'Syria';
-        else if (t.includes('baghdad')) location = 'Baghdad, Iraq';
-        else if (t.includes('iraq')) location = 'Iraq';
-        else if (t.includes('diego garcia')) location = 'Diego Garcia';
-        else if (t.includes('qatar') || t.includes('doha')) location = 'Qatar';
-        else if (t.includes('kuwait')) location = 'Kuwait';
-        else if (t.includes('saudi')) location = 'Saudi Arabia';
-        else if (t.includes('yemen') || t.includes('houthi')) location = 'Yemen';
-        else if (t.includes('gaza')) location = 'Gaza';
-        else if (t.includes('israel')) location = 'Israel';
-        else if (t.includes('iran')) location = 'Iran';
+        const lowered = title.toLowerCase();
 
         events.push({
           id: `gn-${allEvents.length + events.length}-${Date.now()}`,
           date: pubDate || new Date().toISOString(),
-          type,
-          location,
+          type: classifyEventType(lowered),
+          location: resolveLocation(lowered, theater),
           lat: 0,
           lon: 0,
           description: title,
@@ -94,14 +144,15 @@ export async function GET() {
         });
       }
       return events;
-    })
+    }),
   );
 
-  for (const r of results) {
-    if (r.status === 'fulfilled') allEvents.push(...r.value);
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      allEvents.push(...result.value);
+    }
   }
 
-  // Sort newest first
   allEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return NextResponse.json(allEvents, {

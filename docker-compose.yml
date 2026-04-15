@@ -17,5 +17,54 @@ services:
       timeout: 5s
       retries: 20
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: big-boss-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/big_boss
+      AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:-replace-with-a-long-random-secret-value}
+      AUTH_ENCRYPTION_KEY_FALLBACKS: ${AUTH_ENCRYPTION_KEY_FALLBACKS:-}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-big_boss_session}
+      AUTH_SESSION_DAYS: ${AUTH_SESSION_DAYS:-30}
+      AUTH_REQUIRE_2FA: ${AUTH_REQUIRE_2FA:-false}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-big_boss_admin}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-replace-with-a-strong-password}
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:3000/login || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["mcp"]
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/big_boss
+      BIG_BOSS_BASE_URL: http://app:3000
+      BIG_BOSS_API_TOKEN: ${BIG_BOSS_API_TOKEN:-}
+    command: ["npm", "run", "mcp"]
+    stdin_open: true
+    tty: true
+    restart: "no"
+
 volumes:
   big-boss-postgres-data:

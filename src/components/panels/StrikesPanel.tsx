@@ -1,6 +1,7 @@
 'use client';
 
-import { useDataFeed, timeAgo, useTick } from '@/lib/hooks';
+import { timeAgo, useTick } from '@/lib/hooks';
+import { useTheaterDataFeed } from '@/components/dashboard/useTheaterDataFeed';
 
 interface StrikeEvent {
   id: string;
@@ -21,7 +22,7 @@ const SEVERITY_COLOR: Record<string, string> = {
 };
 
 export default function StrikesPanel() {
-  const { data: strikes, loading } = useDataFeed<StrikeEvent[]>('/api/strikes', 120000);
+  const { data: strikes, loading } = useTheaterDataFeed<StrikeEvent[]>('/api/strikes', 120000);
   useTick(15000);
 
   return (

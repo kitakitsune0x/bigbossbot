@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
-  Shield,
+  Settings2,
   Users,
   LogOut,
   Newspaper,
@@ -27,7 +27,8 @@ import {
   Loader2,
 } from 'lucide-react';
 import { logoutAction } from '@/app/actions/auth';
-import { PANEL_DATA_ENDPOINTS } from '@/components/dashboard/panel-data';
+import { useDashboardPreferences } from '@/components/dashboard/PreferencesProvider';
+import { getPanelDataPaths } from '@/components/dashboard/panel-data';
 import { isPlainLeftClick } from '@/components/dashboard/panel-navigation';
 import { Kbd } from '@/components/dashboard/ShortcutsHelp';
 import {
@@ -48,6 +49,7 @@ import {
 import BrandLogo from '@/components/layout/BrandLogo';
 import { primeDataFeed } from '@/lib/hooks';
 import { APP_NAME, type DashboardPanelId } from '@/lib/auth/config';
+import { THEATER_META } from '@/lib/theater';
 
 type AppSidebarProps = {
   username: string;
@@ -56,7 +58,7 @@ type AppSidebarProps = {
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/account/security', label: 'Security', icon: Shield },
+  { href: '/account/settings', label: 'Settings', icon: Settings2 },
 ];
 
 const ADMIN_ITEMS = [
@@ -72,7 +74,7 @@ type PanelItem = {
 const INTEL_ITEMS: PanelItem[] = [
   { panelId: 'news', label: 'Intel Feed', icon: Newspaper },
   { panelId: 'map', label: 'Conflict Map', icon: Map },
-  { panelId: 'alerts', label: 'Israel Alerts', icon: Siren },
+  { panelId: 'alerts', label: 'Alerts', icon: Siren },
   { panelId: 'telegram', label: 'Telegram OSINT', icon: Send },
 ];
 
@@ -170,7 +172,9 @@ export default function AppSidebar({ username, role }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
+  const { preferences } = useDashboardPreferences();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const theaterMeta = THEATER_META[preferences.theater];
 
   useEffect(() => {
     setPendingHref(null);
@@ -201,10 +205,10 @@ export default function AppSidebar({ username, role }: AppSidebarProps) {
   function warmPanel(panelId: DashboardPanelId) {
     warmRoute(`/${panelId}`);
 
-    const endpoints = PANEL_DATA_ENDPOINTS[panelId] ?? [];
-    endpoints.forEach((endpoint) => {
-      void primeDataFeed(endpoint);
-    });
+      const endpoints = getPanelDataPaths(panelId, preferences.theater);
+      endpoints.forEach((endpoint) => {
+        void primeDataFeed(endpoint);
+      });
   }
 
   function closeMobileSidebar() {
@@ -247,7 +251,7 @@ export default function AppSidebar({ username, role }: AppSidebarProps) {
                 <BrandLogo className="size-8 rounded-lg" />
                 <div className="grid flex-1 text-left leading-tight">
                   <span className="truncate text-sm font-semibold tracking-wider">{APP_NAME}</span>
-                  <span className="truncate text-xs text-muted-foreground">Command Center</span>
+                  <span className="truncate text-xs text-muted-foreground">{theaterMeta.label}</span>
                 </div>
               </Link>
             </SidebarMenuButton>

@@ -7,15 +7,12 @@ import { getOrCreateTotpSetup } from '@/lib/auth/service';
 
 export default async function SetupTwoFactorPage() {
   const session = await requirePageSession({ allowPendingSetup: true });
-
-  if (session.status === 'active') {
-    redirect('/dashboard');
-  }
+  const continueHref = session.status === 'active' ? '/account/settings' : '/dashboard';
 
   const setup = await getOrCreateTotpSetup(session.userId);
 
   if (setup.alreadyConfigured) {
-    redirect('/dashboard');
+    redirect(continueHref);
   }
 
   return (
@@ -28,13 +25,14 @@ export default async function SetupTwoFactorPage() {
           </div>
           <h1 className="text-lg font-semibold mt-4">Two-factor setup</h1>
           <p className="text-sm text-muted-foreground">
-            Scan the QR code with your authenticator app.
+            Scan the QR code with your authenticator app to enable sign-in verification.
           </p>
         </div>
         <SetupTwoFactorForm
           username={setup.username}
           secretBase32={setup.secretBase32}
           qrCodeDataUrl={setup.qrCodeDataUrl}
+          continueHref={continueHref}
         />
       </div>
     </div>

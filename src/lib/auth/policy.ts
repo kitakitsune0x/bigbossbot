@@ -1,3 +1,4 @@
+import { AUTH_REQUIRE_2FA } from '@/lib/auth/config';
 import type { AccountStatus } from '@/types/auth';
 
 export function shouldExtendSession(lastTouchedAt: Date | number, now = Date.now(), rollingWindowMs: number) {
@@ -7,9 +8,10 @@ export function shouldExtendSession(lastTouchedAt: Date | number, now = Date.now
 
 export function resolveAdminManagedStatus(
   requestedStatus: AccountStatus | undefined,
-  hasVerifiedTotp: boolean
+  hasVerifiedTotp: boolean,
+  requireTwoFactor = AUTH_REQUIRE_2FA
 ) {
-  if (requestedStatus === 'active' && !hasVerifiedTotp) {
+  if (requestedStatus === 'active' && requireTwoFactor && !hasVerifiedTotp) {
     return 'pending_2fa_setup' satisfies AccountStatus;
   }
 

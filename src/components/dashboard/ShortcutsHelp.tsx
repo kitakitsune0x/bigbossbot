@@ -17,7 +17,7 @@ const SHORTCUT_GROUPS = [
     label: 'Navigation',
     shortcuts: [
       { keys: ['G', 'D'], description: 'Go to Dashboard' },
-      { keys: ['G', 'S'], description: 'Go to Security' },
+      { keys: ['G', 'S'], description: 'Go to Settings' },
       { keys: ['G', 'U'], description: 'Go to User Management' },
     ],
   },

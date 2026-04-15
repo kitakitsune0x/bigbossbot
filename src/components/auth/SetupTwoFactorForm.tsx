@@ -12,12 +12,14 @@ type SetupTwoFactorFormProps = {
   username: string;
   secretBase32: string;
   qrCodeDataUrl: string;
+  continueHref?: string;
 };
 
 export default function SetupTwoFactorForm({
   username,
   secretBase32,
   qrCodeDataUrl,
+  continueHref = '/dashboard',
 }: SetupTwoFactorFormProps) {
   const [state, formAction] = useActionState<FormState, FormData>(setupTotpAction, {});
 
@@ -61,10 +63,10 @@ export default function SetupTwoFactorForm({
             ))}
           </div>
           <Link
-            href="/dashboard"
+            href={continueHref}
             className="inline-flex h-9 w-full items-center justify-center rounded bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Continue to dashboard
+            Continue
           </Link>
         </div>
       )}

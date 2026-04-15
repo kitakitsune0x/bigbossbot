@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -8,20 +9,24 @@ import {
   revokeOtherSessionsAction,
   type FormState,
 } from '@/app/actions/auth';
-import type { UserSessionSummary } from '@/types/auth';
+import type { ApiTokenSummary, UserSessionSummary } from '@/types/auth';
+import AgentAccessTokensSection from '@/components/account/AgentAccessTokensSection';
 import FormSubmitButton from '@/components/auth/FormSubmitButton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 type SecurityCenterProps = {
   username: string;
   sessions: UserSessionSummary[];
+  apiTokens: ApiTokenSummary[];
+  hasAuthenticator: boolean;
 };
 
 const EMPTY_STATE: FormState = {};
 
-export default function SecurityCenter({ username, sessions }: SecurityCenterProps) {
+export default function SecurityCenter({ username, sessions, apiTokens, hasAuthenticator }: SecurityCenterProps) {
   const router = useRouter();
   const [passwordState, passwordAction] = useActionState<FormState, FormData>(changePasswordAction, EMPTY_STATE);
   const [recoveryState, recoveryAction] = useActionState<FormState, FormData>(regenerateRecoveryCodesAction, EMPTY_STATE);
@@ -34,9 +39,9 @@ export default function SecurityCenter({ username, sessions }: SecurityCenterPro
   return (
     <div className="max-w-xl space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Security — {username}</h2>
+        <h2 className="text-lg font-semibold">Settings — {username}</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Manage credentials, recovery codes, and active sessions.
+          Manage credentials, authenticator access, recovery codes, and active sessions.
         </p>
       </div>
 
@@ -66,6 +71,34 @@ export default function SecurityCenter({ username, sessions }: SecurityCenterPro
         </div>
       </section>
 
+      {/* Authenticator */}
+      <section className="border border-border rounded">
+        <div className="border-b border-border px-4 py-2">
+          <h3 className="text-[13px] font-semibold">Authenticator app</h3>
+        </div>
+        <div className="px-4 py-3 space-y-3">
+          {hasAuthenticator ? (
+            <Alert tone="success">
+              <AlertDescription>
+                Your authenticator app is active. Use it for sign-in verification and keep your recovery codes current.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <Alert tone="default">
+              <AlertDescription>
+                Two-factor authentication is currently optional for your account. Set up an authenticator app to enable sign-in codes and recovery codes.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {!hasAuthenticator && (
+            <Button asChild variant="outline">
+              <Link href="/setup-2fa">Set up authenticator</Link>
+            </Button>
+          )}
+        </div>
+      </section>
+
       {/* Recovery codes */}
       <section className="border border-border rounded">
         <div className="border-b border-border px-4 py-2">
@@ -74,8 +107,21 @@ export default function SecurityCenter({ username, sessions }: SecurityCenterPro
         <div className="px-4 py-3 space-y-3">
           {recoveryState.error && <Alert tone="destructive"><AlertDescription>{recoveryState.error}</AlertDescription></Alert>}
           {recoveryState.success && <Alert tone="success"><AlertDescription>{recoveryState.success}</AlertDescription></Alert>}
+          {!hasAuthenticator && (
+            <Alert tone="default">
+              <AlertDescription>
+                Set up your authenticator app first, then come back here to generate recovery codes.
+              </AlertDescription>
+            </Alert>
+          )}
           <form action={recoveryAction}>
-            <FormSubmitButton label="Generate new codes" pendingLabel="Generating…" fullWidth={false} variant="outline" />
+            <FormSubmitButton
+              label="Generate new codes"
+              pendingLabel="Generating…"
+              fullWidth={false}
+              variant="outline"
+              disabled={!hasAuthenticator}
+            />
           </form>
           {recoveryState.recoveryCodes && (
             <div className="grid gap-1.5 sm:grid-cols-2">
@@ -115,6 +161,8 @@ export default function SecurityCenter({ username, sessions }: SecurityCenterPro
           ))}
         </div>
       </section>
+
+      <AgentAccessTokensSection initialTokens={apiTokens} />
     </div>
   );
 }

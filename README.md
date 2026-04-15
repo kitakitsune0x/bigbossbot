@@ -11,10 +11,11 @@ Built with Next.js, TypeScript, Tailwind CSS, Leaflet, Prisma, and Postgres. No 
 This project now runs as a protected multiuser application:
 
 - Username + password authentication
-- Authenticator app TOTP setup before dashboard access
+- Authenticator app TOTP setup, optional by default and enforceable globally
 - Recovery codes for account recovery
 - Admin/member roles
 - Per-user dashboard preferences
+- Per-user agent access tokens for MCP clients
 - Admin tools for user management, password reset, 2FA reset, and session revocation
 
 ## Features
@@ -138,12 +139,50 @@ The bundled Docker Postgres instance listens on `127.0.0.1:54329`.
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Docker Compose
+
+You can run the full stack in Docker:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+That starts:
+
+- `postgres` on `127.0.0.1:54329`
+- `app` on [http://localhost:3000](http://localhost:3000)
+
+The app container automatically:
+
+- waits for Postgres to become healthy
+- applies Prisma migrations
+- bootstraps the first admin when `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD` are set
+
+Useful scripts:
+
+- `npm run docker:up` starts the full stack in the background
+- `npm run docker:down` stops the full stack
+- `npm run docker:logs` tails the app and database logs
+- `npm run db:up` still starts only Postgres for local non-Docker app development
+
 ## Auth Setup Notes
 
 - `npm run db:up` starts the Docker Postgres service defined in [docker-compose.yml](./docker-compose.yml)
 - `npm run db:migrate` applies the checked-in Prisma migration to the running database
 - `npm run bootstrap:admin` creates the first admin using `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD`
-- Public signup is enabled, but every new account must complete TOTP setup before `/dashboard` becomes accessible
+- `AUTH_REQUIRE_2FA=true` forces every account through authenticator setup before `/dashboard`; the default is optional 2FA
+
+## MCP Access
+
+BIG BOSS includes a local stdio MCP server for agents that need live read-only intel.
+
+- Create a read-only token in `Account -> Security -> Agent access tokens`
+- Start the web app with `npm run dev`
+- Start the MCP sidecar with `npm run mcp`
+- Configure your client with `BIG_BOSS_BASE_URL` and `BIG_BOSS_API_TOKEN`
+
+Full setup instructions, client config snippets, and the bundled Codex skill are in [docs/mcp.md](./docs/mcp.md).
 
 ## Tech Stack
 

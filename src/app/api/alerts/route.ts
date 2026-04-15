@@ -1,25 +1,26 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-import { authorizeApiSession } from '@/lib/auth/session';
-import { fetchWithTimeout } from '@/lib/fetcher';
+import { authorizeReadApiAccess } from '@/lib/auth/session';
+import { fetchWithTimeout, parseXML, getTextContent } from '@/lib/fetcher';
 import { translateHebrew, translateCities, isHebrew, translateFreeText, CITY_TRANSLATIONS } from '@/lib/hebrew';
+import { getTheaterFromRequest, type TheaterId } from '@/lib/theater';
+import { THEATER_MAP_CONFIG } from '@/lib/theater-map';
 
 export const dynamic = 'force-dynamic';
 
-// Sticky alert cache — keep alerts visible for 90 seconds after they clear from the API
-const STICKY_DURATION = 90_000; // 90 seconds
-let stickyAlerts: (AlertEvent & { firstSeen: number })[] = [];
+const STICKY_DURATION_MS: Record<TheaterId, number> = {
+  'middle-east': 90_000,
+  ukraine: 15 * 60 * 1000,
+};
 
-// Israeli Home Front Command (Pikud HaOref) alerts via Tzeva Adom API
-// Returns real-time rocket/missile/drone alerts sent to Israeli civilians
-// Empty array = no active alerts (which is good)
-export async function GET() {
-  const auth = await authorizeApiSession();
-  if (auth instanceof NextResponse) return auth;
+let stickyAlerts: Record<TheaterId, (AlertEvent & { firstSeen: number })[]> = {
+  'middle-east': [],
+  ukraine: [],
+};
 
+async function fetchMiddleEastAlerts() {
   const alerts: AlertEvent[] = [];
 
-  // Source 1: Tzeva Adom API - mirrors Pikud HaOref real-time alerts
   try {
     const res = await fetchWithTimeout('https://api.tzevaadom.co.il/notifications', {
       timeout: 12000,
@@ -32,15 +33,13 @@ export async function GET() {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        data.forEach((alert: TzevaAdomAlert, i: number) => {
+        data.forEach((alert: TzevaAdomAlert, index: number) => {
           const rawThreat = alert.threat || alert.title || 'Alert';
           const rawCities = Array.isArray(alert.cities) ? alert.cities : [alert.data || 'Unknown'];
 
           let translatedThreat = translateHebrew(rawThreat);
           const translatedLocations = translateCities(rawCities);
 
-          // If the "threat" field is actually a city name (API sometimes puts city in wrong field),
-          // move it to locations and use a generic threat label
           if (CITY_TRANSLATIONS[rawThreat]) {
             if (!rawCities.includes(rawThreat)) {
               translatedLocations.push(CITY_TRANSLATIONS[rawThreat]);
@@ -49,7 +48,7 @@ export async function GET() {
           }
 
           alerts.push({
-            id: `tzeva-${i}-${Date.now()}`,
+            id: `tzeva-${index}-${Date.now()}`,
             time: alert.date || new Date().toISOString(),
             type: categorizeAlert(rawThreat),
             threat: translatedThreat,
@@ -67,32 +66,131 @@ export async function GET() {
     if (!isTimeout) console.error('Tzeva Adom fetch error:', err);
   }
 
-  // Fallback: use Google Translate for any remaining Hebrew text the dictionary missed
   await Promise.all(alerts.map(async (alert) => {
     if (isHebrew(alert.threat)) {
       alert.threat = await translateFreeText(alert.threat);
     }
     alert.locations = await Promise.all(
-      alert.locations.map(loc => isHebrew(loc) ? translateFreeText(loc) : Promise.resolve(loc))
+      alert.locations.map((loc) => isHebrew(loc) ? translateFreeText(loc) : Promise.resolve(loc)),
     );
   }));
 
-  // Add new alerts to sticky cache
+  return {
+    alerts,
+    source: 'Pikud HaOref / Tzeva Adom',
+  };
+}
+
+async function fetchUkraineAlerts() {
+  const alerts: AlertEvent[] = [];
+  const query = encodeURIComponent('Ukraine air raid alert OR missile OR drone OR Kyiv OR Kharkiv OR Odesa');
+  const cityKeys = THEATER_MAP_CONFIG.ukraine.alertCities;
+
+  try {
+    const res = await fetchWithTimeout(
+      `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`,
+      {
+        timeout: 10000,
+        headers: {
+          'User-Agent': 'BIG-BOSS/1.0',
+          'Accept': 'application/rss+xml, text/xml, */*',
+        },
+      },
+    );
+    if (!res.ok) {
+      return { alerts, source: 'Google News air-raid monitor' };
+    }
+
+    const text = await res.text();
+    const doc = parseXML(text);
+    const items = doc.getElementsByTagName('item');
+    const now = Date.now();
+
+    for (let i = 0; i < Math.min(items.length, 8); i++) {
+      const item = items[i];
+      let title = getTextContent(item, 'title');
+      const pubDate = getTextContent(item, 'pubDate');
+      const published = new Date(pubDate).getTime();
+
+      if (!title || Number.isNaN(published) || now - published > 6 * 60 * 60 * 1000) {
+        continue;
+      }
+
+      const dashIdx = title.lastIndexOf(' - ');
+      const source = dashIdx > 0 ? title.substring(dashIdx + 3) : 'Google News';
+      if (dashIdx > 0) {
+        title = title.substring(0, dashIdx);
+      }
+
+      const lowered = title.toLowerCase();
+      const locations = new Set<string>();
+
+      for (const key of Object.keys(cityKeys)) {
+        if (lowered.includes(key)) {
+          const label = key
+            .split(' ')
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+            .join(' ');
+          locations.add(label === 'Odessa' ? 'Odesa' : label);
+        }
+      }
+
+      if (locations.size === 0 && lowered.includes('ukraine')) {
+        locations.add('Kyiv');
+      }
+
+      alerts.push({
+        id: `ua-alert-${i}-${published}`,
+        time: pubDate || new Date().toISOString(),
+        type: categorizeAlert(lowered.includes('air raid') ? `${title} air raid` : title),
+        threat: title,
+        threatOriginal: title,
+        locations: [...locations],
+        locationsOriginal: [...locations],
+        source,
+        active: true,
+      });
+    }
+  } catch (err) {
+    console.error('Ukraine alert fetch error:', err);
+  }
+
+  return {
+    alerts,
+    source: 'Google News air-raid monitor',
+  };
+}
+
+export async function GET(request: NextRequest) {
+  const auth = await authorizeReadApiAccess();
+  if (auth instanceof NextResponse) return auth;
+
+  const theater = getTheaterFromRequest(request);
+  const fetched = theater === 'ukraine'
+    ? await fetchUkraineAlerts()
+    : await fetchMiddleEastAlerts();
+
   const now = Date.now();
-  for (const alert of alerts) {
-    const exists = stickyAlerts.find(s => s.threatOriginal === alert.threatOriginal && s.locationsOriginal.join() === alert.locationsOriginal.join());
+  const theaterSticky = stickyAlerts[theater];
+
+  for (const alert of fetched.alerts) {
+    const exists = theaterSticky.find((sticky) =>
+      sticky.threatOriginal === alert.threatOriginal
+      && sticky.locationsOriginal.join() === alert.locationsOriginal.join(),
+    );
     if (!exists) {
-      stickyAlerts.push({ ...alert, firstSeen: now });
+      theaterSticky.push({ ...alert, firstSeen: now });
     }
   }
 
-  // Remove alerts older than 90 seconds
-  stickyAlerts = stickyAlerts.filter(s => now - s.firstSeen < STICKY_DURATION);
+  stickyAlerts[theater] = theaterSticky.filter((alert) => now - alert.firstSeen < STICKY_DURATION_MS[theater]);
 
-  // Mark alerts that are no longer live from the API as clearing
-  const allAlerts = stickyAlerts.map(s => ({
-    ...s,
-    active: alerts.some(a => a.threatOriginal === s.threatOriginal && a.locationsOriginal.join() === s.locationsOriginal.join()),
+  const allAlerts = stickyAlerts[theater].map((alert) => ({
+    ...alert,
+    active: fetched.alerts.some((live) =>
+      live.threatOriginal === alert.threatOriginal
+      && live.locationsOriginal.join() === alert.locationsOriginal.join(),
+    ),
   }));
 
   const status = allAlerts.length > 0 ? 'ACTIVE' : 'CLEAR';
@@ -102,9 +200,9 @@ export async function GET() {
     activeCount: allAlerts.length,
     alerts: allAlerts,
     lastChecked: new Date().toISOString(),
-    source: 'Pikud HaOref / Tzeva Adom',
+    source: fetched.source,
   }, {
-    headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=3' }, // Check every 5 seconds
+    headers: { 'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=3' },
   });
 }
 
@@ -129,14 +227,15 @@ interface AlertEvent {
 }
 
 function categorizeAlert(threat: string): string {
-  const t = threat.toLowerCase();
-  if (t.includes('missile') || t.includes('טיל') || t.includes('ballistic')) return 'MISSILE';
-  if (t.includes('rocket') || t.includes('רקט')) return 'ROCKET';
-  if (t.includes('drone') || t.includes('uav') || t.includes('כטב') || t.includes('hostile aircraft')) return 'DRONE';
-  if (t.includes('mortar')) return 'MORTAR';
-  if (t.includes('infiltration') || t.includes('חדיר')) return 'INFILTRATION';
-  if (t.includes('earthquake') || t.includes('רעידת')) return 'EARTHQUAKE';
-  if (t.includes('tsunami')) return 'TSUNAMI';
-  if (t.includes('chemical') || t.includes('hazmat')) return 'HAZMAT';
+  const text = threat.toLowerCase();
+  if (text.includes('missile') || text.includes('טיל') || text.includes('ballistic')) return 'MISSILE';
+  if (text.includes('rocket') || text.includes('רקט')) return 'ROCKET';
+  if (text.includes('drone') || text.includes('uav') || text.includes('shahed') || text.includes('כטב') || text.includes('hostile aircraft')) return 'DRONE';
+  if (text.includes('mortar') || text.includes('artillery') || text.includes('shell')) return 'ARTILLERY';
+  if (text.includes('infiltration') || text.includes('חדיר')) return 'INFILTRATION';
+  if (text.includes('air raid')) return 'AIR RAID';
+  if (text.includes('earthquake') || text.includes('רעידת')) return 'EARTHQUAKE';
+  if (text.includes('tsunami')) return 'TSUNAMI';
+  if (text.includes('chemical') || text.includes('hazmat')) return 'HAZMAT';
   return 'ALERT';
 }

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  apiTokenCreateSchema,
   adminUserUpdateSchema,
   preferencesPatchSchema,
   signupSchema,
@@ -43,10 +44,44 @@ test('preferencesPatchSchema rejects empty updates and unknown panel ids', () =>
     preferencesPatchSchema.safeParse({ alertSoundEnabled: false, hiddenPanels: ['oil'] }).success,
     true
   );
+  assert.equal(
+    preferencesPatchSchema.safeParse({
+      uiState: {
+        conflictMap: {
+          'middle-east': {
+            showMilAir: true,
+            showNaval: true,
+            showCities: true,
+            showStrikes: true,
+            showRangeRings: false,
+            measureMode: false,
+          },
+          ukraine: {
+            showMilAir: false,
+            showNaval: false,
+            showCities: true,
+            showStrikes: true,
+            showRangeRings: false,
+            measureMode: false,
+          },
+        },
+        regionalAlertsCollapsed: {
+          'middle-east': ['Israel'],
+          ukraine: ['Ukraine'],
+        },
+      },
+    }).success,
+    true
+  );
 });
 
 test('adminUserUpdateSchema requires at least one change', () => {
   assert.equal(adminUserUpdateSchema.safeParse({}).success, false);
   assert.equal(adminUserUpdateSchema.safeParse({ role: 'admin' }).success, true);
   assert.equal(adminUserUpdateSchema.safeParse({ status: 'disabled' }).success, true);
+});
+
+test('apiTokenCreateSchema enforces a readable token label', () => {
+  assert.equal(apiTokenCreateSchema.safeParse({ name: 'A' }).success, false);
+  assert.equal(apiTokenCreateSchema.safeParse({ name: 'Codex MCP' }).success, true);
 });

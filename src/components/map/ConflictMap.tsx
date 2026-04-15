@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useDataFeed } from '@/lib/hooks';
+import { useDashboardPreferences } from '@/components/dashboard/PreferencesProvider';
+import { useCurrentTheater, useTheaterDataFeed } from '@/components/dashboard/useTheaterDataFeed';
+import { NAVY_COLORS, THEATER_MAP_CONFIG, type TheaterMapConfig } from '@/lib/theater-map';
 
 let L: typeof import('leaflet') | null = null;
 
@@ -89,82 +91,12 @@ interface MapProps {
   className?: string;
 }
 
-// === STATIC DATA ===
-
-const CITIES = [
-  { name: 'Tehran', lat: 35.6892, lon: 51.3890, country: 'Iran', capital: true },
-  { name: 'Isfahan', lat: 32.6546, lon: 51.6680, country: 'Iran', capital: false },
-  { name: 'Shiraz', lat: 29.5918, lon: 52.5837, country: 'Iran', capital: false },
-  { name: 'Tabriz', lat: 38.0800, lon: 46.2919, country: 'Iran', capital: false },
-  { name: 'Bandar Abbas', lat: 27.1865, lon: 56.2808, country: 'Iran', capital: false },
-  { name: 'Tel Aviv', lat: 32.0853, lon: 34.7818, country: 'Israel', capital: false },
-  { name: 'Jerusalem', lat: 31.7683, lon: 35.2137, country: 'Israel', capital: true },
-  { name: 'Haifa', lat: 32.7940, lon: 34.9896, country: 'Israel', capital: false },
-  { name: 'Baghdad', lat: 33.3152, lon: 44.3661, country: 'Iraq', capital: true },
-  { name: 'Damascus', lat: 33.5138, lon: 36.2765, country: 'Syria', capital: true },
-  { name: 'Beirut', lat: 33.8938, lon: 35.5018, country: 'Lebanon', capital: true },
-  { name: 'Riyadh', lat: 24.7136, lon: 46.6753, country: 'Saudi Arabia', capital: true },
-  { name: 'Dubai', lat: 25.2048, lon: 55.2708, country: 'UAE', capital: false },
-  { name: 'Doha', lat: 25.2854, lon: 51.5310, country: 'Qatar', capital: true },
-  { name: 'Manama', lat: 26.2285, lon: 50.5860, country: 'Bahrain', capital: true },
-  { name: 'Kuwait City', lat: 29.3759, lon: 47.9774, country: 'Kuwait', capital: true },
-  { name: 'Amman', lat: 31.9454, lon: 35.9284, country: 'Jordan', capital: true },
-  { name: 'Cairo', lat: 30.0444, lon: 31.2357, country: 'Egypt', capital: true },
-  { name: 'Ankara', lat: 39.9334, lon: 32.8597, country: 'Turkey', capital: true },
-  { name: "Sana'a", lat: 15.3694, lon: 44.1910, country: 'Yemen', capital: true },
-  { name: 'Aden', lat: 12.7855, lon: 45.0187, country: 'Yemen', capital: false },
-  { name: 'Muscat', lat: 23.5880, lon: 58.3829, country: 'Oman', capital: true },
-  { name: 'Dimona', lat: 31.0700, lon: 35.0300, country: 'Israel', capital: false },
-];
-
-const NAVY_COLORS: Record<string, string> = {
-  'US Navy': '#00aaff', 'Royal Navy': '#4488cc', 'French Navy': '#6666cc',
-  'Israeli Navy': '#00d4ff', 'Iran Navy': '#ff3366', 'IRGC Navy': '#ff3366', 'Saudi Navy': '#00ff88',
-};
-
-const ALERT_CITIES: Record<string, [number, number]> = {
-  'tel aviv': [32.085, 34.782], 'haifa': [32.794, 34.990], 'jerusalem': [31.768, 35.214],
-  'beer sheva': [31.252, 34.791], 'ashkelon': [31.669, 34.574], 'ashdod': [31.804, 34.655],
-  'sderot': [31.525, 34.596], 'eilat': [29.558, 34.952], 'tiberias': [32.796, 35.530],
-  'nahariya': [33.010, 35.098], 'dimona': [31.070, 35.030], 'arad': [31.261, 35.213],
-};
-
-// Iranian missile launch sites (known/approximate)
-const IRAN_LAUNCH_SITES = [
-  { name: 'Tabriz IRGC Base', lat: 38.08, lon: 46.29, range: 2000 },
-  { name: 'Isfahan Missile Base', lat: 32.65, lon: 51.67, range: 2000 },
-  { name: 'Shiraz Air Base', lat: 29.54, lon: 52.59, range: 1800 },
-  { name: 'Khorramabad Base', lat: 33.49, lon: 48.35, range: 2000 },
-];
-
-// Geocode strike locations from conflict descriptions
-const STRIKE_LOCATIONS: Record<string, [number, number]> = {
-  // Iran
-  'tehran': [35.69, 51.39], 'isfahan': [32.65, 51.67], 'natanz': [33.51, 51.73],
-  'shiraz': [29.59, 52.58], 'tabriz': [38.08, 46.29], 'bushehr': [28.97, 50.84],
-  'bandar abbas': [27.19, 56.28], 'kharg island': [29.24, 50.31], 'south pars': [27.5, 52.6],
-  'iran': [32.5, 53.0],
-  // Israel
-  'tel aviv': [32.09, 34.78], 'haifa': [32.79, 34.99], 'dimona': [31.07, 35.03],
-  'jerusalem': [31.77, 35.21], 'beer sheva': [31.25, 34.79], 'eilat': [29.56, 34.95],
-  'negev': [30.85, 34.78], 'arad': [31.26, 35.21], 'ashdod': [31.80, 34.66],
-  'ashkelon': [31.67, 34.57], 'ben gurion': [32.01, 34.87], 'nuclear': [31.07, 35.03],
-  'israel': [31.5, 34.8],
-  // Lebanon
-  'beirut': [33.89, 35.50], 'hezbollah': [33.60, 35.50], 'litani': [33.35, 35.30],
-  'south lebanon': [33.30, 35.40], 'lebanon': [33.85, 35.86],
-  // Others
-  'syria': [34.80, 38.99], 'damascus': [33.51, 36.28],
-  'iraq': [33.31, 44.37], 'baghdad': [33.31, 44.37],
-  'yemen': [15.37, 44.19], 'houthi': [15.37, 44.19], 'red sea': [14.5, 42.5],
-  'gaza': [31.42, 34.36], 'strait of hormuz': [26.56, 56.25],
-  'qatar': [25.29, 51.53], 'doha': [25.29, 51.53],
-  'saudi': [24.71, 46.68], 'diego garcia': [-7.32, 72.42],
-  'kuwait': [29.38, 47.98],
-};
+const DEEP_STATE_MAP_URL = 'https://deepstatemap.live/en#6/49.4383200/32.0526800';
 
 function getFlightColor(origin: string): string {
   if (origin.includes('US') || origin === 'United States') return '#00aaff';
+  if (origin.includes('Ukraine')) return '#66ccff';
+  if (origin.includes('Russia')) return '#ff6666';
   if (origin.includes('Israel')) return '#00d4ff';
   if (origin.includes('Iran')) return '#ff3366';
   if (origin.includes('UK') || origin.includes('Royal')) return '#4488cc';
@@ -257,27 +189,8 @@ function drawMissileArc(map: L.Map, from: [number, number], to: [number, number]
 
 // Geocode a strike — ONLY match specific locations, not generic country names
 // This prevents "Iran war: day 22" from placing a random pin on the map
-function geocodeStrike(description: string, location: string): { coords: [number, number]; place: string } | null {
+function geocodeStrike(description: string, location: string, theaterConfig: TheaterMapConfig): { coords: [number, number]; place: string } | null {
   const text = `${description} ${location}`.toLowerCase();
-
-  // Only match specific cities/targets — never generic "iran" or "israel"
-  const targets: [string, string][] = [
-    // Israel targets
-    ['arad', 'Arad'], ['dimona', 'Dimona'], ['natanz', 'Natanz'], ['ben gurion', 'Ben Gurion Airport'],
-    ['tel aviv', 'Tel Aviv'], ['haifa', 'Haifa'], ['beer sheva', 'Beer Sheva'], ['eilat', 'Eilat'],
-    ['ashkelon', 'Ashkelon'], ['ashdod', 'Ashdod'], ['negev', 'Negev'], ['sderot', 'Sderot'],
-    ['jerusalem', 'Jerusalem'], ['nuclear town', 'Dimona'],
-    // Iran targets
-    ['tehran', 'Tehran'], ['isfahan', 'Isfahan'], ['shiraz', 'Shiraz'], ['tabriz', 'Tabriz'],
-    ['bandar abbas', 'Bandar Abbas'], ['bushehr', 'Bushehr'], ['kharg island', 'Kharg Island'],
-    ['south pars', 'South Pars'],
-    // Lebanon
-    ['beirut', 'Beirut'], ['litani', 'Litani River'], ['south lebanon', 'South Lebanon'],
-    // Others
-    ['damascus', 'Damascus'], ['baghdad', 'Baghdad'], ['diego garcia', 'Diego Garcia'],
-    ['strait of hormuz', 'Strait of Hormuz'], ['red sea', 'Red Sea'],
-    ['gaza', 'Gaza'], ['doha', 'Doha'], ['kuwait', 'Kuwait'],
-  ];
 
   // Also require a strike-indicating word to avoid matching city mentions in non-strike articles
   const strikeWords = ['strike', 'struck', 'hit', 'attack', 'bomb', 'missile', 'rocket',
@@ -286,9 +199,9 @@ function geocodeStrike(description: string, location: string): { coords: [number
   const hasStrikeWord = strikeWords.some(w => text.includes(w));
   if (!hasStrikeWord) return null;
 
-  for (const [key, place] of targets) {
-    if (text.includes(key) && STRIKE_LOCATIONS[key]) {
-      return { coords: STRIKE_LOCATIONS[key], place };
+  for (const [key, place] of theaterConfig.strikeTargets) {
+    if (text.includes(key) && theaterConfig.strikeLocations[key]) {
+      return { coords: theaterConfig.strikeLocations[key], place };
     }
   }
 
@@ -296,6 +209,9 @@ function geocodeStrike(description: string, location: string): { coords: [number
 }
 
 export default function ConflictMap({ className }: MapProps) {
+  const theater = useCurrentTheater();
+  const { preferences, setConflictMapPreferences } = useDashboardPreferences();
+  const theaterConfig = THEATER_MAP_CONFIG[theater];
   const [mounted, setMounted] = useState(false);
   const mapRef = useRef<L.Map | null>(null);
 
@@ -311,37 +227,43 @@ export default function ConflictMap({ className }: MapProps) {
   // Marker tracking
   const airMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const navalMarkersRef = useRef<Map<string, L.Marker>>(new Map());
-  const citiesDrawnRef = useRef(false);
   const highlightRef = useRef<L.CircleMarker | null>(null);
 
   // Flight trail tracking: icao24 -> array of past positions
   const flightTrailsRef = useRef<Map<string, [number, number][]>>(new Map());
   const activeTrailRef = useRef<{ id: string; polyline: L.Polyline } | null>(null);
 
-  // Distance measurement
-  const [measureMode, setMeasureMode] = useState(false);
   const measurePointsRef = useRef<L.LatLng[]>([]);
   const measureLayerRef = useRef<L.LayerGroup | null>(null);
-
-  // Range rings toggle
-  const [showRangeRings, setShowRangeRings] = useState(false);
 
   // Previous alert status for detecting new alerts
   const prevAlertStatusRef = useRef<string>('CLEAR');
   const arcCancellersRef = useRef<(() => void)[]>([]);
 
   // Data feeds
-  const { data: flights } = useDataFeed<FlightData>('/api/flights', 180000);
-  const { data: naval } = useDataFeed<NavalData>('/api/ships', 300000);
-  const { data: alerts } = useDataFeed<AlertData>('/api/alerts', 15000);
-  const { data: conflicts } = useDataFeed<ConflictEvent[]>('/api/conflicts', 180000);
-  const { data: strikes } = useDataFeed<StrikeData[]>('/api/strikes', 120000);
-  const { data: telegram } = useDataFeed<TelegramData>('/api/telegram', 60000);
+  const { data: flights } = useTheaterDataFeed<FlightData>('/api/flights', 180000);
+  const { data: naval } = useTheaterDataFeed<NavalData>('/api/ships', 300000);
+  const { data: alerts } = useTheaterDataFeed<AlertData>('/api/alerts', 15000);
+  const { data: conflicts } = useTheaterDataFeed<ConflictEvent[]>('/api/conflicts', 180000);
+  const { data: strikes } = useTheaterDataFeed<StrikeData[]>('/api/strikes', 120000);
+  const { data: telegram } = useTheaterDataFeed<TelegramData>('/api/telegram', 60000);
 
-  const [showMilAir, setShowMilAir] = useState(true);
-  const [showNaval, setShowNaval] = useState(true);
-  const [showCities, setShowCities] = useState(true);
-  const [showStrikes, setShowStrikes] = useState(true);
+  const mapPreferences = preferences.uiState.conflictMap[theater];
+  const {
+    showMilAir,
+    showNaval,
+    showCities,
+    showStrikes,
+    showRangeRings,
+    measureMode,
+  } = mapPreferences;
+
+  const updateMapPreferences = useCallback(async (next: Partial<typeof mapPreferences>) => {
+    await setConflictMapPreferences(theater, {
+      ...mapPreferences,
+      ...next,
+    });
+  }, [mapPreferences, setConflictMapPreferences, theater]);
 
   useEffect(() => {
     import('leaflet').then(leaflet => { L = leaflet; setMounted(true); });
@@ -354,7 +276,7 @@ export default function ConflictMap({ className }: MapProps) {
     if (!container || mapRef.current) return;
 
     const map = L.map('conflict-map', {
-      center: [30.0, 48.0], zoom: 5, zoomControl: false, attributionControl: false,
+      center: theaterConfig.center, zoom: theaterConfig.zoom, zoomControl: false, attributionControl: false,
     });
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
@@ -384,10 +306,29 @@ export default function ConflictMap({ className }: MapProps) {
       measureLayerRef.current = null;
       airMarkersRef.current.clear();
       navalMarkersRef.current.clear();
-      citiesDrawnRef.current = false;
       flightTrailsRef.current.clear();
     };
-  }, [mounted]);
+  }, [mounted, theaterConfig.center, theaterConfig.zoom]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    map.flyTo(theaterConfig.center, theaterConfig.zoom, { duration: 1.1 });
+    prevAlertStatusRef.current = 'CLEAR';
+    arcCancellersRef.current.forEach((cancel) => cancel());
+    arcCancellersRef.current = [];
+    airLayerRef.current?.clearLayers();
+    navalLayerRef.current?.clearLayers();
+    alertLayerRef.current?.clearLayers();
+    strikeLayerRef.current?.clearLayers();
+    rangeLayerRef.current?.clearLayers();
+    toolLayerRef.current?.clearLayers();
+    airMarkersRef.current.clear();
+    navalMarkersRef.current.clear();
+    cityMarkersRef.current.clear();
+    flightTrailsRef.current.clear();
+  }, [theaterConfig, theater]);
 
   // === DISTANCE MEASUREMENT TOOL ===
   useEffect(() => {
@@ -483,24 +424,31 @@ export default function ConflictMap({ className }: MapProps) {
   const cityMarkersRef = useRef<Map<string, L.CircleMarker>>(new Map());
 
   useEffect(() => {
-    if (!L || !cityLayerRef.current || citiesDrawnRef.current) return;
-    CITIES.forEach(city => {
+    if (!L || !cityLayerRef.current) return;
+
+    cityLayerRef.current.clearLayers();
+    cityMarkersRef.current.clear();
+
+    theaterConfig.cities.forEach(city => {
       const size = city.capital ? 5 : 3;
-      const color = city.country === 'Iran' ? '#ff6666' : city.country === 'Israel' ? '#66ccff' : '#999999';
+      const color = city.country === 'Iran' || city.country === 'Russia'
+        ? '#ff6666'
+        : city.country === 'Israel' || city.country === 'Ukraine'
+          ? '#66ccff'
+          : '#999999';
       const marker = L!.circleMarker([city.lat, city.lon], { radius: size, color, fillColor: color, fillOpacity: 0.6, weight: 1 });
       marker.bindTooltip(city.name, { permanent: city.capital, direction: 'right', offset: [8, 0], className: 'city-label' });
       marker.bindPopup(''); // Will be set dynamically on click
       cityLayerRef.current!.addLayer(marker);
       cityMarkersRef.current.set(city.name, marker);
     });
-    citiesDrawnRef.current = true;
-  }, [mounted]);
+  }, [mounted, theaterConfig]);
 
   // Update city popups when conflict/alert data changes
   useEffect(() => {
     if (!cityMarkersRef.current.size) return;
 
-    CITIES.forEach(city => {
+    theaterConfig.cities.forEach(city => {
       const marker = cityMarkersRef.current.get(city.name);
       if (!marker) return;
 
@@ -559,7 +507,7 @@ export default function ConflictMap({ className }: MapProps) {
       html += `</div>`;
       marker.setPopupContent(html);
     });
-  }, [conflicts, alerts]);
+  }, [alerts, conflicts, theaterConfig]);
 
   // City/air/naval visibility toggles
   useEffect(() => { if (mapRef.current && cityLayerRef.current) { showCities ? mapRef.current.addLayer(cityLayerRef.current) : mapRef.current.removeLayer(cityLayerRef.current); } }, [showCities]);
@@ -746,7 +694,7 @@ export default function ConflictMap({ className }: MapProps) {
       alerts.alerts.forEach(alert => {
         alert.locations.forEach(loc => {
           const key = loc.toLowerCase().trim();
-          const coords = ALERT_CITIES[key];
+          const coords = theaterConfig.alertCities[key];
           if (coords) {
             const sirens = L!.circleMarker(coords, {
               radius: 12, color: '#ff3366', fillColor: '#ff3366', fillOpacity: 0.4, weight: 2, className: 'alert-flash',
@@ -760,17 +708,23 @@ export default function ConflictMap({ className }: MapProps) {
       // Draw missile arcs on NEW alerts — only to specific alert cities
       if (prevAlertStatusRef.current !== 'ACTIVE') {
         const alertType = alerts.alerts[0]?.type || '';
-        const isFromIran = alertType === 'MISSILE' || alerts.alerts.some(a => a.threat.toLowerCase().includes('iran') || a.threat.toLowerCase().includes('ballistic'));
-        const isFromLebanon = alerts.alerts.some(a => a.threat.toLowerCase().includes('lebanon') || a.threat.toLowerCase().includes('hezbollah'));
-
-        const origin: [number, number] = isFromIran ? [33.5, 48.0] : isFromLebanon ? [33.89, 35.50] : [33.5, 48.0];
+        const threatText = alerts.alerts.map((a) => `${a.type} ${a.threat}`.toLowerCase()).join(' ');
+        const origin: [number, number] = theater === 'ukraine'
+          ? threatText.includes('crimea') || threatText.includes('black sea')
+            ? [45.3, 34.2]
+            : [50.6, 36.6]
+          : alertType === 'MISSILE' || threatText.includes('iran') || threatText.includes('ballistic')
+            ? [33.5, 48.0]
+            : threatText.includes('lebanon') || threatText.includes('hezbollah')
+              ? [33.89, 35.5]
+              : [33.5, 48.0];
 
         // Collect all unique alert city coordinates
         const targetCoords: [number, number][] = [];
         const seenCoords = new Set<string>();
         alerts.alerts.forEach(alert => {
           alert.locations.forEach(loc => {
-            const coords = ALERT_CITIES[loc.toLowerCase().trim()];
+            const coords = theaterConfig.alertCities[loc.toLowerCase().trim()];
             if (coords) {
               const key = `${coords[0]},${coords[1]}`;
               if (!seenCoords.has(key)) {
@@ -781,9 +735,9 @@ export default function ConflictMap({ className }: MapProps) {
           });
         });
 
-        // If no specific cities found, fall back to central Israel
+        // If no specific cities found, fall back to the theater center
         if (targetCoords.length === 0) {
-          targetCoords.push([31.5, 34.8]);
+          targetCoords.push(theaterConfig.center);
         }
 
         // Draw one arc per target city
@@ -798,7 +752,7 @@ export default function ConflictMap({ className }: MapProps) {
       }
     }
     prevAlertStatusRef.current = alerts?.status || 'CLEAR';
-  }, [alerts]);
+  }, [alerts, theater, theaterConfig]);
 
   // === STRIKE MARKERS from conflict feed, strikes API, AND Telegram ===
   useEffect(() => {
@@ -865,7 +819,7 @@ export default function ConflictMap({ className }: MapProps) {
       const key = event.title.toLowerCase().substring(0, 40);
       if (plotted.has(key)) return;
 
-      const geo = geocodeStrike(event.title, '');
+      const geo = geocodeStrike(event.title, '', theaterConfig);
       if (!geo) return;
 
       // If this is from Telegram, skip if a news source already has a marker at this location
@@ -904,7 +858,7 @@ export default function ConflictMap({ className }: MapProps) {
     });
 
     console.log(`[MAP] Plotted ${plotted.size} strike markers`);
-  }, [conflicts, strikes, telegram]);
+  }, [conflicts, strikes, telegram, theaterConfig]);
 
   // === MISSILE RANGE RINGS ===
   useEffect(() => {
@@ -913,7 +867,7 @@ export default function ConflictMap({ className }: MapProps) {
 
     if (!showRangeRings) return;
 
-    IRAN_LAUNCH_SITES.forEach(site => {
+    theaterConfig.launchSites.forEach(site => {
       // Range circle
       const circle = L!.circle([site.lat, site.lon], {
         radius: site.range * 1000,
@@ -933,44 +887,73 @@ export default function ConflictMap({ className }: MapProps) {
       marker.bindTooltip(site.name, { className: 'city-label', direction: 'right', offset: [6, 0] });
       rangeLayerRef.current!.addLayer(marker);
     });
-  }, [showRangeRings]);
+  }, [showRangeRings, theaterConfig]);
 
   return (
     <div className={`bg-card ${className || ''} flex flex-col overflow-hidden`}>
-      <div className="flex items-center justify-between border-b border-border px-3 py-1.5 shrink-0">
+      <div className="relative z-10 flex items-center justify-between border-b border-border bg-card px-3 py-1.5 shrink-0">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground">Map</span>
         <div className="flex items-center gap-1 flex-wrap justify-end">
-          {[
-            { label: `Air ${flights?.military || 0}`, active: showMilAir, toggle: () => setShowMilAir(!showMilAir) },
-            { label: `Nav ${naval?.ships?.length || 0}`, active: showNaval, toggle: () => setShowNaval(!showNaval) },
-            { label: 'Strikes', active: showStrikes, toggle: () => setShowStrikes(!showStrikes) },
-            { label: 'Range', active: showRangeRings, toggle: () => setShowRangeRings(!showRangeRings) },
-            { label: 'Cities', active: showCities, toggle: () => setShowCities(!showCities) },
-            { label: 'Dist', active: measureMode, toggle: () => { setMeasureMode(!measureMode); if (measureMode && measureLayerRef.current) measureLayerRef.current.clearLayers(); } },
-          ].map(btn => (
-            <button
-              key={btn.label}
-              onClick={btn.toggle}
-              className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${
-                btn.active
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border text-muted-foreground hover:bg-muted'
-              }`}
+          {theater === 'ukraine' ? (
+            <a
+              href={DEEP_STATE_MAP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] px-2 py-0.5 rounded-md border border-sky-500/40 bg-sky-500/10 text-sky-300 transition-colors hover:bg-sky-500/20"
             >
-              {btn.label}
-            </button>
-          ))}
+              Open DeepStateMap
+            </a>
+          ) : (
+            [
+              { label: `Air ${flights?.military || 0}`, active: showMilAir, toggle: () => { void updateMapPreferences({ showMilAir: !showMilAir }); } },
+              { label: `Nav ${naval?.ships?.length || 0}`, active: showNaval, toggle: () => { void updateMapPreferences({ showNaval: !showNaval }); } },
+              { label: 'Strikes', active: showStrikes, toggle: () => { void updateMapPreferences({ showStrikes: !showStrikes }); } },
+              { label: 'Range', active: showRangeRings, toggle: () => { void updateMapPreferences({ showRangeRings: !showRangeRings }); } },
+              { label: 'Cities', active: showCities, toggle: () => { void updateMapPreferences({ showCities: !showCities }); } },
+              {
+                label: 'Dist',
+                active: measureMode,
+                toggle: () => {
+                  const nextMeasureMode = !measureMode;
+                  if (!nextMeasureMode && measureLayerRef.current) {
+                    measureLayerRef.current.clearLayers();
+                  }
+                  void updateMapPreferences({ measureMode: nextMeasureMode });
+                },
+              },
+            ].map(btn => (
+              <button
+                key={btn.label}
+                onClick={btn.toggle}
+                className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${
+                  btn.active
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {btn.label}
+              </button>
+            ))
+          )}
         </div>
       </div>
-      <div className="relative flex-1 min-h-0">
-        {!mounted ? (
+      <div className="relative flex-1 min-h-0 overflow-hidden">
+        {theater === 'ukraine' ? (
+          <iframe
+            src={DEEP_STATE_MAP_URL}
+            title="DeepStateMap Ukraine Frontline Map"
+            className="h-full w-full border-0 bg-black"
+            loading="lazy"
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+        ) : !mounted ? (
           <div className="flex h-full items-center justify-center bg-muted/50">
             <p className="text-sm text-muted-foreground">Loading map...</p>
           </div>
         ) : (
           <div id="conflict-map" className="w-full h-full" />
         )}
-        {measureMode && (
+        {theater !== 'ukraine' && measureMode && (
           <div className="absolute top-2 left-2 z-[1000] text-xs px-2 py-1 rounded-md bg-background/90 border text-yellow-500">
             Measure mode — Click points. Click Dist to exit.
           </div>

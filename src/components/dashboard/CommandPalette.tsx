@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, createContext, useContext } from 'rea
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
-  Shield,
+  Settings2,
   Users,
   Newspaper,
   Map,
@@ -36,8 +36,9 @@ import {
   CommandShortcut,
   CommandSeparator,
 } from '@/components/ui/command';
+import { useDashboardPreferences } from '@/components/dashboard/PreferencesProvider';
 import { useSidebar } from '@/components/ui/sidebar';
-import { PANEL_DATA_ENDPOINTS } from '@/components/dashboard/panel-data';
+import { getPanelDataPaths } from '@/components/dashboard/panel-data';
 import { focusDashboardPanel } from '@/components/dashboard/panel-navigation';
 import { primeDataFeed } from '@/lib/hooks';
 import { DASHBOARD_PANEL_IDS, DASHBOARD_PANEL_LABELS, type DashboardPanelId } from '@/lib/auth/config';
@@ -80,6 +81,7 @@ export default function CommandPalette() {
   const router = useRouter();
   const pathname = usePathname();
   const { isMobile } = useSidebar();
+  const { preferences } = useDashboardPreferences();
   const panelOps = useContext(PanelOpsContext);
 
   const visiblePanels = panelOps?.visiblePanels ?? [...DASHBOARD_PANEL_IDS];
@@ -102,11 +104,11 @@ export default function CommandPalette() {
       return;
     }
     router.prefetch(`/${id}`);
-    (PANEL_DATA_ENDPOINTS[id] ?? []).forEach((endpoint) => {
+    getPanelDataPaths(id, preferences.theater).forEach((endpoint) => {
       void primeDataFeed(endpoint);
     });
     router.push(`/${id}`);
-  }, [isMobile, pathname, router]);
+  }, [isMobile, pathname, preferences.theater, router]);
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
@@ -120,9 +122,9 @@ export default function CommandPalette() {
             <span>Dashboard</span>
             <CommandShortcut>G D</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => { setOpen(false); router.push('/account/security'); }}>
-            <Shield />
-            <span>Security Settings</span>
+          <CommandItem onSelect={() => { setOpen(false); router.push('/account/settings'); }}>
+            <Settings2 />
+            <span>Settings</span>
             <CommandShortcut>G S</CommandShortcut>
           </CommandItem>
           <CommandItem onSelect={() => { setOpen(false); router.push('/admin/users'); }}>

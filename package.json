@@ -10,12 +10,17 @@
     "lint": "next lint",
     "postinstall": "prisma generate",
     "db:up": "docker compose up -d postgres",
-    "db:down": "docker compose down",
+    "db:down": "docker compose stop postgres",
     "db:logs": "docker compose logs -f postgres",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f app postgres",
+    "docker:mcp": "docker compose run --rm mcp",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:dev": "prisma migrate dev",
     "bootstrap:admin": "tsx scripts/bootstrap-admin.ts",
+    "mcp": "tsx scripts/mcp-server.ts",
     "test": "tsx --test tests/**/*.test.ts"
   },
   "dependencies": {

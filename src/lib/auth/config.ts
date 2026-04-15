@@ -6,6 +6,7 @@ export const APP_USER_AGENT = 'BIG-BOSS/1.0';
 
 export const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? `${APP_COOKIE_PREFIX}_session`;
 export const LOGIN_CHALLENGE_COOKIE_NAME = `${APP_COOKIE_PREFIX}_login_challenge`;
+export const AUTH_REQUIRE_2FA = process.env.AUTH_REQUIRE_2FA === 'true';
 
 export const SESSION_TTL_MS = Number(process.env.AUTH_SESSION_DAYS ?? '30') * 24 * 60 * 60 * 1000;
 export const SESSION_ROLLING_WINDOW_MS = 6 * 60 * 60 * 1000;
@@ -41,14 +42,14 @@ export type DashboardPanelId = (typeof DASHBOARD_PANEL_IDS)[number];
 export const DASHBOARD_PANEL_LABELS: Record<DashboardPanelId, string> = {
   news: 'Live Intel Feed',
   map: 'Conflict Map',
-  alerts: 'Israel Alerts',
+  alerts: 'Alerts',
   telegram: 'Telegram OSINT',
   markets: 'Markets',
   strikes: 'Strikes',
   polymarket: 'Prediction Markets',
   conflicts: 'Conflict Feed',
   flights: 'Military Flights',
-  'regional-alerts': 'Regional Alerts',
+  'regional-alerts': 'Regional Watch',
   naval: 'Naval Tracker',
   crypto: 'Crypto',
   oil: 'Energy',

@@ -1,6 +1,6 @@
 'use client';
 
-import { useDataFeed } from '@/lib/hooks';
+import { useTheaterDataFeed } from '@/components/dashboard/useTheaterDataFeed';
 
 interface NavalVessel {
   name: string;
@@ -24,7 +24,7 @@ interface NavalData {
 }
 
 export default function NavalPanel() {
-  const { data, loading } = useDataFeed<NavalData>('/api/ships', 300000);
+  const { data, loading } = useTheaterDataFeed<NavalData>('/api/ships', 300000);
 
   const byNavy: Record<string, NavalVessel[]> = {};
   data?.ships.forEach(ship => {

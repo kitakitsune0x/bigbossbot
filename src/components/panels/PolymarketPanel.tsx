@@ -1,6 +1,6 @@
 'use client';
 
-import { useDataFeed } from '@/lib/hooks';
+import { useTheaterDataFeed } from '@/components/dashboard/useTheaterDataFeed';
 
 interface MarketOutcome {
   label: string;
@@ -43,7 +43,7 @@ function yesBgColor(price: number): string {
 }
 
 export default function PolymarketPanel() {
-  const { data, loading } = useDataFeed<PolymarketData>('/api/polymarket', 600000);
+  const { data, loading } = useTheaterDataFeed<PolymarketData>('/api/polymarket', 600000);
 
   return (
     <div className="flex h-full flex-col bg-card">

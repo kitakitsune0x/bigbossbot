@@ -50,7 +50,7 @@ export default function KeyboardHandler() {
           pendingG.current = false;
           clearTimeout(gTimer.current);
           if (e.key === 'd') { router.push('/dashboard'); return; }
-          if (e.key === 's') { router.push('/account/security'); return; }
+          if (e.key === 's') { router.push('/account/settings'); return; }
           if (e.key === 'u') { router.push('/admin/users'); return; }
         }
       }

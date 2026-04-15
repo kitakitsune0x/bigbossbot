@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DASHBOARD_PANEL_IDS } from '@/lib/auth/config';
+import { THEATER_IDS } from '@/lib/theater';
 
 export const usernameSchema = z
   .string()
@@ -39,11 +40,33 @@ export const setupTotpSchema = z.object({
   code: z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code from your authenticator app'),
 });
 
+const conflictMapPreferencesSchema = z.object({
+  showMilAir: z.boolean(),
+  showNaval: z.boolean(),
+  showCities: z.boolean(),
+  showStrikes: z.boolean(),
+  showRangeRings: z.boolean(),
+  measureMode: z.boolean(),
+});
+
+const dashboardUiStateSchema = z.object({
+  conflictMap: z.object({
+    'middle-east': conflictMapPreferencesSchema,
+    ukraine: conflictMapPreferencesSchema,
+  }),
+  regionalAlertsCollapsed: z.object({
+    'middle-east': z.array(z.string()),
+    ukraine: z.array(z.string()),
+  }),
+});
+
 export const preferencesPatchSchema = z.object({
   alertSoundEnabled: z.boolean().optional(),
   desktopNotificationsEnabled: z.boolean().optional(),
   hiddenPanels: z.array(z.enum(DASHBOARD_PANEL_IDS)).max(DASHBOARD_PANEL_IDS.length).optional(),
   panelOrder: z.array(z.enum(DASHBOARD_PANEL_IDS)).max(DASHBOARD_PANEL_IDS.length).optional(),
+  theater: z.enum(THEATER_IDS).optional(),
+  uiState: dashboardUiStateSchema.optional(),
 }).refine((value) => Object.keys(value).length > 0, {
   message: 'At least one preference must be provided',
 });
@@ -65,4 +88,12 @@ export const adminUserUpdateSchema = z.object({
   status: z.enum(['pending_2fa_setup', 'active', 'disabled']).optional(),
 }).refine((value) => Boolean(value.role || value.status), {
   message: 'At least one field must be provided',
+});
+
+export const apiTokenCreateSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Token name must be at least 2 characters')
+    .max(48, 'Token name must be 48 characters or fewer'),
 });

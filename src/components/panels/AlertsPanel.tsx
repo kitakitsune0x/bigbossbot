@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useDashboardPreferences } from '@/components/dashboard/PreferencesProvider';
+import { useTheaterDataFeed } from '@/components/dashboard/useTheaterDataFeed';
 import { APP_NAME, APP_SLUG } from '@/lib/auth/config';
-import { useDataFeed } from '@/lib/hooks';
 import { playAlertSound } from '@/lib/generateAlert';
+import { THEATER_META } from '@/lib/theater';
 
 interface AlertData {
   status: 'ACTIVE' | 'CLEAR';
@@ -19,15 +20,17 @@ interface AlertData {
     active: boolean;
   }[];
   lastChecked: string;
+  source: string;
 }
 
 export default function AlertsPanel() {
-  const { data, loading } = useDataFeed<AlertData>('/api/alerts', 15000);
+  const { data, loading } = useTheaterDataFeed<AlertData>('/api/alerts', 15000);
   const prevStatus = useRef<string>('CLEAR');
   const [hasInteracted, setHasInteracted] = useState(false);
   const { preferences, setAlertSoundEnabled } = useDashboardPreferences();
   const soundEnabled = preferences.alertSoundEnabled;
   const desktopNotificationsEnabled = preferences.desktopNotificationsEnabled;
+  const theaterMeta = THEATER_META[preferences.theater];
 
   useEffect(() => {
     const handleInteraction = () => { setHasInteracted(true); window.removeEventListener('click', handleInteraction); window.removeEventListener('keydown', handleInteraction); };
@@ -76,7 +79,11 @@ export default function AlertsPanel() {
           <>
             <div className="px-3 py-2 bg-status-threat/10 border-b border-status-threat/20">
               <p className="text-[12px] font-semibold text-threat">INCOMING THREAT DETECTED</p>
-              <p className="text-[10px] text-muted-foreground">Pikud HaOref sirens activated</p>
+              <p className="text-[10px] text-muted-foreground">
+                {preferences.theater === 'ukraine'
+                  ? 'Recent high-priority Ukraine alert headlines'
+                  : 'Pikud HaOref sirens activated'}
+              </p>
             </div>
             {data?.alerts.map((alert, i) => (
               <div key={i} className="border-b border-border/50 px-3 py-1.5">
@@ -97,6 +104,9 @@ export default function AlertsPanel() {
             <p className="text-[12px] font-medium text-clear">ALL CLEAR</p>
             <p className="text-[10px] text-muted-foreground text-center mt-1">
               No active alerts
+            </p>
+            <p className="text-[10px] text-muted-foreground text-center mt-1">
+              Source: {data?.source ?? theaterMeta.alertSourceLabel}
             </p>
             <p className="text-[10px] text-muted-foreground font-mono mt-2">
               {data?.lastChecked ? new Date(data.lastChecked).toLocaleTimeString() : '…'}

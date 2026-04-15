@@ -1,10 +1,11 @@
 'use client';
 
-import { useDataFeed, timeAgo, useTick } from '@/lib/hooks';
+import { timeAgo, useTick } from '@/lib/hooks';
+import { useTheaterDataFeed } from '@/components/dashboard/useTheaterDataFeed';
 import type { ConflictEvent } from '@/types';
 
 export default function ConflictFeed() {
-  const { data: rawEvents, loading } = useDataFeed<ConflictEvent[]>('/api/conflicts', 180000);
+  const { data: rawEvents, loading } = useTheaterDataFeed<ConflictEvent[]>('/api/conflicts', 180000);
   useTick(15000);
 
   const events = rawEvents ? [...rawEvents].sort((a, b) =>

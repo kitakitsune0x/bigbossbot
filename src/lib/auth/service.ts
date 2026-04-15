@@ -3,6 +3,7 @@ import { cookies, headers } from 'next/headers';
 import type { Prisma } from '@/generated/prisma/client';
 import {
   APP_NAME,
+  AUTH_REQUIRE_2FA,
   LOGIN_CHALLENGE_COOKIE_NAME,
   LOGIN_CHALLENGE_TTL_MS,
   SESSION_COOKIE_NAME,
@@ -32,7 +33,19 @@ import { getAdminSelfProtectionError, resolveAdminManagedStatus, shouldExtendSes
 import { consumeRateLimit } from '@/lib/auth/rate-limit';
 import { getPrisma } from '@/lib/prisma';
 import { cacheGet, cacheSet, cacheDelete, cacheDeletePrefix } from '@/lib/cache';
-import { DEFAULT_USER_PREFERENCES, type AdminUserSummary, type SessionContext, type UserPreferences, type UserSessionSummary } from '@/types/auth';
+import {
+  DEFAULT_CONFLICT_MAP_PREFERENCES,
+  DEFAULT_USER_PREFERENCES,
+  createDefaultDashboardUiState,
+  createDefaultUserPreferences,
+  type ApiTokenSummary,
+  type AdminUserSummary,
+  type DashboardUiState,
+  type SessionContext,
+  type UserPreferences,
+  type UserSessionSummary,
+} from '@/types/auth';
+import { parseTheater } from '@/lib/theater';
 
 type AuditMeta = {
   userId?: string | null;
@@ -45,6 +58,30 @@ type LoginChallenge = {
   usernameCanonical: string;
 };
 
+export type ApiTokenAccessContext = {
+  userId: string;
+  username: string;
+  role: 'admin' | 'member';
+  status: 'active';
+  totpRequired: boolean;
+  authMethod: 'api-token';
+  apiTokenId: string;
+  apiTokenName: string;
+  apiTokenScope: 'read_intel';
+};
+
+const API_TOKEN_SCOPE = 'read_intel' as const;
+
+function createApiTokenValue() {
+  return `bb_${API_TOKEN_SCOPE}_${createOpaqueToken(24)}`;
+}
+
+function getApiTokenPrefix(token: string) {
+  const visibleLength = Math.min(token.length, 20);
+  const visible = token.slice(0, visibleLength);
+  return `${visible}${token.length > visibleLength ? '…' : ''}`;
+}
+
 function parseHiddenPanels(value: unknown) {
   if (!Array.isArray(value)) {
     return [...DEFAULT_USER_PREFERENCES.hiddenPanels];
@@ -53,22 +90,85 @@ function parseHiddenPanels(value: unknown) {
   return value.filter((panel): panel is string => typeof panel === 'string');
 }
 
+function parsePanelOrder(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [...DEFAULT_USER_PREFERENCES.panelOrder];
+  }
+
+  return value.filter((panel): panel is string => typeof panel === 'string');
+}
+
+function parseConflictMapPreferences(value: unknown) {
+  const defaults = DEFAULT_CONFLICT_MAP_PREFERENCES;
+
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { ...defaults };
+  }
+
+  const record = value as Record<string, unknown>;
+
+  return {
+    showMilAir: typeof record.showMilAir === 'boolean' ? record.showMilAir : defaults.showMilAir,
+    showNaval: typeof record.showNaval === 'boolean' ? record.showNaval : defaults.showNaval,
+    showCities: typeof record.showCities === 'boolean' ? record.showCities : defaults.showCities,
+    showStrikes: typeof record.showStrikes === 'boolean' ? record.showStrikes : defaults.showStrikes,
+    showRangeRings: typeof record.showRangeRings === 'boolean' ? record.showRangeRings : defaults.showRangeRings,
+    measureMode: typeof record.measureMode === 'boolean' ? record.measureMode : defaults.measureMode,
+  };
+}
+
+function parseDashboardUiState(value: unknown): DashboardUiState {
+  const defaults = createDefaultDashboardUiState();
+
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return defaults;
+  }
+
+  const record = value as Record<string, unknown>;
+  const conflictMapValue = record.conflictMap;
+  const regionalCollapsedValue = record.regionalAlertsCollapsed;
+
+  const conflictMapRecord =
+    conflictMapValue && typeof conflictMapValue === 'object' && !Array.isArray(conflictMapValue)
+      ? (conflictMapValue as Record<string, unknown>)
+      : {};
+
+  const regionalCollapsedRecord =
+    regionalCollapsedValue && typeof regionalCollapsedValue === 'object' && !Array.isArray(regionalCollapsedValue)
+      ? (regionalCollapsedValue as Record<string, unknown>)
+      : {};
+
+  return {
+    conflictMap: {
+      'middle-east': parseConflictMapPreferences(conflictMapRecord['middle-east']),
+      ukraine: parseConflictMapPreferences(conflictMapRecord.ukraine),
+    },
+    regionalAlertsCollapsed: {
+      'middle-east': parseHiddenPanels(regionalCollapsedRecord['middle-east']),
+      ukraine: parseHiddenPanels(regionalCollapsedRecord.ukraine),
+    },
+  };
+}
+
 function mapPreferences(record: {
   alertSoundEnabled: boolean;
   desktopNotificationsEnabled: boolean;
   hiddenPanels: unknown;
+  panelOrder?: unknown;
+  theater?: unknown;
+  uiState?: unknown;
 } | null): UserPreferences {
   if (!record) {
-    return { ...DEFAULT_USER_PREFERENCES };
+    return createDefaultUserPreferences();
   }
 
   return {
     alertSoundEnabled: record.alertSoundEnabled,
     desktopNotificationsEnabled: record.desktopNotificationsEnabled,
     hiddenPanels: parseHiddenPanels(record.hiddenPanels),
-    panelOrder: Array.isArray((record as Record<string, unknown>).panelOrder)
-      ? ((record as Record<string, unknown>).panelOrder as string[])
-      : [],
+    panelOrder: parsePanelOrder(record.panelOrder),
+    theater: parseTheater((record as Record<string, unknown>).theater),
+    uiState: parseDashboardUiState((record as Record<string, unknown>).uiState),
   };
 }
 
@@ -91,6 +191,26 @@ function mapSessionContext(record: {
     totpRequired: record.user.totpRequired,
     sessionId: record.id,
     expiresAt: record.expiresAt.toISOString(),
+  };
+}
+
+function mapApiTokenSummary(record: {
+  id: string;
+  name: string;
+  tokenPrefix: string;
+  scope: 'read_intel';
+  lastUsedAt: Date | null;
+  revokedAt: Date | null;
+  createdAt: Date;
+}): ApiTokenSummary {
+  return {
+    id: record.id,
+    name: record.name,
+    tokenPrefix: record.tokenPrefix,
+    scope: record.scope,
+    lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
+    revokedAt: record.revokedAt?.toISOString() ?? null,
+    createdAt: record.createdAt.toISOString(),
   };
 }
 
@@ -296,6 +416,11 @@ export async function getCurrentSessionContext(): Promise<SessionContext | null>
           role: true,
           status: true,
           totpRequired: true,
+          totpCredential: {
+            select: {
+              verifiedAt: true,
+            },
+          },
         },
       },
     },
@@ -306,7 +431,11 @@ export async function getCurrentSessionContext(): Promise<SessionContext | null>
   }
 
   await touchSessionIfNeeded(session);
-  const ctx = mapSessionContext(session);
+  const normalizedUser = await normalizePendingUserIfTwoFactorOptional(session.user);
+  const ctx = mapSessionContext({
+    ...session,
+    user: normalizedUser,
+  });
   cacheSet(cacheKey, ctx, SESSION_CACHE_TTL);
   return ctx;
 }
@@ -342,6 +471,8 @@ export async function updateUserPreferences(userId: string, input: Partial<UserP
         : {}),
       ...(input.hiddenPanels ? { hiddenPanels: input.hiddenPanels } : {}),
       ...(input.panelOrder ? { panelOrder: input.panelOrder } : {}),
+      ...(input.theater ? { theater: input.theater } : {}),
+      ...(input.uiState ? { uiState: input.uiState as unknown as Prisma.InputJsonValue } : {}),
     },
     create: {
       userId,
@@ -350,6 +481,8 @@ export async function updateUserPreferences(userId: string, input: Partial<UserP
         input.desktopNotificationsEnabled ?? DEFAULT_USER_PREFERENCES.desktopNotificationsEnabled,
       hiddenPanels: input.hiddenPanels ?? DEFAULT_USER_PREFERENCES.hiddenPanels,
       panelOrder: input.panelOrder ?? DEFAULT_USER_PREFERENCES.panelOrder,
+      theater: input.theater ?? DEFAULT_USER_PREFERENCES.theater,
+      uiState: (input.uiState ?? createDefaultDashboardUiState()) as unknown as Prisma.InputJsonValue,
     },
   });
 
@@ -366,6 +499,48 @@ async function ensureUserPreferences(userId: string) {
     update: {},
     create: { userId },
   });
+}
+
+function getDefaultTwoFactorState() {
+  return AUTH_REQUIRE_2FA
+    ? {
+        status: 'pending_2fa_setup' as const,
+        totpRequired: true,
+        nextPath: '/setup-2fa' as const,
+      }
+    : {
+        status: 'active' as const,
+        totpRequired: false,
+        nextPath: '/dashboard' as const,
+      };
+}
+
+async function normalizePendingUserIfTwoFactorOptional<T extends {
+  id: string;
+  status: 'pending_2fa_setup' | 'active' | 'disabled';
+  totpRequired: boolean;
+  totpCredential?: {
+    verifiedAt: Date | null;
+  } | null;
+}>(user: T) {
+  if (AUTH_REQUIRE_2FA || user.status !== 'pending_2fa_setup') {
+    return user;
+  }
+
+  const nextTotpRequired = Boolean(user.totpCredential?.verifiedAt);
+  await getPrisma().user.update({
+    where: { id: user.id },
+    data: {
+      status: 'active',
+      totpRequired: nextTotpRequired,
+    },
+  });
+
+  return {
+    ...user,
+    status: 'active' as const,
+    totpRequired: nextTotpRequired,
+  };
 }
 
 export async function registerUser(username: string, password: string) {
@@ -399,14 +574,15 @@ export async function registerUser(username: string, password: string) {
   }
 
   const passwordHash = await hashPassword(password);
+  const twoFactorState = getDefaultTwoFactorState();
   const user = await prisma.user.create({
     data: {
       username: username.trim(),
       usernameCanonical: canonical,
       passwordHash,
       role: 'member',
-      status: 'pending_2fa_setup',
-      totpRequired: true,
+      status: twoFactorState.status,
+      totpRequired: twoFactorState.totpRequired,
     },
     select: {
       id: true,
@@ -423,7 +599,7 @@ export async function registerUser(username: string, password: string) {
 
   return {
     ok: true as const,
-    nextPath: '/setup-2fa',
+    nextPath: twoFactorState.nextPath,
   };
 }
 
@@ -449,6 +625,11 @@ export async function startLogin(username: string, password: string) {
       passwordHash: true,
       status: true,
       totpRequired: true,
+      totpCredential: {
+        select: {
+          verifiedAt: true,
+        },
+      },
     },
   });
 
@@ -477,11 +658,13 @@ export async function startLogin(username: string, password: string) {
     };
   }
 
-  if (user.status === 'pending_2fa_setup') {
-    await createSession(user.id);
+  const normalizedUser = await normalizePendingUserIfTwoFactorOptional(user);
+
+  if (normalizedUser.status === 'pending_2fa_setup') {
+    await createSession(normalizedUser.id);
     await auditLog('login_pending_setup', {
-      userId: user.id,
-      usernameCanonical: user.usernameCanonical,
+      userId: normalizedUser.id,
+      usernameCanonical: normalizedUser.usernameCanonical,
     });
 
     return {
@@ -491,15 +674,15 @@ export async function startLogin(username: string, password: string) {
     };
   }
 
-  if (!user.totpRequired) {
-    await createSession(user.id);
+  if (!normalizedUser.totpRequired) {
+    await createSession(normalizedUser.id);
     await prisma.user.update({
-      where: { id: user.id },
+      where: { id: normalizedUser.id },
       data: { lastLoginAt: new Date() },
     });
     await auditLog('login_success', {
-      userId: user.id,
-      usernameCanonical: user.usernameCanonical,
+      userId: normalizedUser.id,
+      usernameCanonical: normalizedUser.usernameCanonical,
     });
 
     return {
@@ -509,8 +692,8 @@ export async function startLogin(username: string, password: string) {
   }
 
   await setLoginChallengeCookie({
-    userId: user.id,
-    usernameCanonical: user.usernameCanonical,
+    userId: normalizedUser.id,
+    usernameCanonical: normalizedUser.usernameCanonical,
   });
 
   return {
@@ -717,6 +900,7 @@ export async function completeTotpSetup(userId: string, code: string) {
       where: { id: user.id },
       data: {
         status: 'active',
+        totpRequired: true,
       },
     }),
     prisma.totpCredential.update({
@@ -893,6 +1077,183 @@ export async function revokeOtherSessions(userId: string, currentSessionId?: str
   });
 }
 
+export async function listUserApiTokens(userId: string): Promise<ApiTokenSummary[]> {
+  const prisma = getPrisma();
+  const tokens = await prisma.apiToken.findMany({
+    where: { userId },
+    orderBy: [
+      { revokedAt: 'asc' },
+      { createdAt: 'desc' },
+    ],
+    select: {
+      id: true,
+      name: true,
+      tokenPrefix: true,
+      scope: true,
+      lastUsedAt: true,
+      revokedAt: true,
+      createdAt: true,
+    },
+  });
+
+  return tokens.map(mapApiTokenSummary);
+}
+
+export async function createUserApiToken(userId: string, name: string) {
+  const prisma = getPrisma();
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      usernameCanonical: true,
+      status: true,
+    },
+  });
+
+  if (!user || user.status !== 'active') {
+    return {
+      ok: false as const,
+      message: 'Only active accounts can create agent access tokens.',
+    };
+  }
+
+  const token = createApiTokenValue();
+  const created = await prisma.apiToken.create({
+    data: {
+      userId,
+      name: name.trim(),
+      tokenHash: hashToken(token),
+      tokenPrefix: getApiTokenPrefix(token),
+      scope: API_TOKEN_SCOPE,
+    },
+    select: {
+      id: true,
+      name: true,
+      tokenPrefix: true,
+      scope: true,
+      lastUsedAt: true,
+      revokedAt: true,
+      createdAt: true,
+    },
+  });
+
+  await auditLog('api_token_created', {
+    userId,
+    usernameCanonical: user.usernameCanonical,
+    metadata: {
+      tokenId: created.id,
+      tokenName: created.name,
+      tokenPrefix: created.tokenPrefix,
+      scope: created.scope,
+    },
+  });
+
+  return {
+    ok: true as const,
+    token,
+    apiToken: mapApiTokenSummary(created),
+  };
+}
+
+export async function revokeUserApiToken(userId: string, tokenId: string) {
+  const prisma = getPrisma();
+  const token = await prisma.apiToken.findFirst({
+    where: {
+      id: tokenId,
+      userId,
+    },
+    select: {
+      id: true,
+      name: true,
+      tokenPrefix: true,
+      scope: true,
+      revokedAt: true,
+      user: {
+        select: {
+          usernameCanonical: true,
+        },
+      },
+    },
+  });
+
+  if (!token) {
+    return {
+      ok: false as const,
+      message: 'Token not found.',
+    };
+  }
+
+  if (!token.revokedAt) {
+    await prisma.apiToken.update({
+      where: { id: token.id },
+      data: {
+        revokedAt: new Date(),
+      },
+    });
+
+    await auditLog('api_token_revoked', {
+      userId,
+      usernameCanonical: token.user.usernameCanonical,
+      metadata: {
+        tokenId: token.id,
+        tokenName: token.name,
+        tokenPrefix: token.tokenPrefix,
+        scope: token.scope,
+      },
+    });
+  }
+
+  return {
+    ok: true as const,
+  };
+}
+
+export async function getApiTokenAccessContext(rawToken: string): Promise<ApiTokenAccessContext | null> {
+  const tokenHash = hashToken(rawToken.trim());
+  const prisma = getPrisma();
+  const token = await prisma.apiToken.findUnique({
+    where: { tokenHash },
+    select: {
+      id: true,
+      name: true,
+      scope: true,
+      revokedAt: true,
+      user: {
+        select: {
+          id: true,
+          username: true,
+          role: true,
+          status: true,
+          totpRequired: true,
+        },
+      },
+    },
+  });
+
+  if (!token || token.revokedAt || token.user.status !== 'active') {
+    return null;
+  }
+
+  await prisma.apiToken.update({
+    where: { id: token.id },
+    data: {
+      lastUsedAt: new Date(),
+    },
+  });
+
+  return {
+    userId: token.user.id,
+    username: token.user.username,
+    role: token.user.role,
+    status: 'active',
+    totpRequired: token.user.totpRequired,
+    authMethod: 'api-token',
+    apiTokenId: token.id,
+    apiTokenName: token.name,
+    apiTokenScope: token.scope,
+  };
+}
+
 export async function getAdminUsers(): Promise<AdminUserSummary[]> {
   const prisma = getPrisma();
   const now = new Date();
@@ -965,7 +1326,11 @@ export async function updateUserByAdmin(actor: SessionContext, targetUserId: str
     };
   }
 
-  const nextStatus = resolveAdminManagedStatus(input.status, Boolean(target.totpCredential?.verifiedAt));
+  const nextStatus = resolveAdminManagedStatus(
+    input.status,
+    Boolean(target.totpCredential?.verifiedAt),
+    AUTH_REQUIRE_2FA
+  );
 
   await prisma.user.update({
     where: { id: target.id },
@@ -1052,6 +1417,7 @@ export async function resetPasswordByAdmin(actor: SessionContext, targetUserId: 
 
 export async function resetTotpByAdmin(actor: SessionContext, targetUserId: string) {
   const prisma = getPrisma();
+  const twoFactorState = getDefaultTwoFactorState();
   const target = await prisma.user.findUnique({
     where: { id: targetUserId },
     select: {
@@ -1076,8 +1442,8 @@ export async function resetTotpByAdmin(actor: SessionContext, targetUserId: stri
     prisma.user.update({
       where: { id: target.id },
       data: {
-        status: 'pending_2fa_setup',
-        totpRequired: true,
+        status: twoFactorState.status,
+        totpRequired: twoFactorState.totpRequired,
       },
     }),
     prisma.session.updateMany({

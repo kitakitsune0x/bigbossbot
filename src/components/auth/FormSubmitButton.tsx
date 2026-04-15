@@ -12,6 +12,7 @@ type FormSubmitButtonProps = {
   size?: ButtonProps['size'];
   className?: string;
   fullWidth?: boolean;
+  disabled?: boolean;
 };
 
 export default function FormSubmitButton({
@@ -21,13 +22,14 @@ export default function FormSubmitButton({
   size = 'default',
   className,
   fullWidth = true,
+  disabled = false,
 }: FormSubmitButtonProps) {
   const { pending } = useFormStatus();
 
   return (
     <Button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       variant={variant}
       size={size}
       className={cn(fullWidth && 'w-full', className)}

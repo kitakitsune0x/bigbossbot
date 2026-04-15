@@ -2,19 +2,22 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useDashboardPreferences } from '@/components/dashboard/PreferencesProvider';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
-import { Kbd } from '@/components/dashboard/ShortcutsHelp';
 import { APP_NAME, DASHBOARD_PANEL_LABELS, type DashboardPanelId } from '@/lib/auth/config';
+import { THEATER_META } from '@/lib/theater';
 
 const PAGE_LABELS: Record<string, string> = {
   '/dashboard': 'Dashboard',
-  '/account/security': 'Security',
+  '/account/settings': 'Settings',
   '/admin/users': 'User Management',
 };
 
 export default function DashboardHeader() {
   const pathname = usePathname();
+  const { preferences } = useDashboardPreferences();
+  const theaterLabel = THEATER_META[preferences.theater].label;
 
   // Check if on a panel page like /news, /map, etc.
   const slug = pathname.replace(/^\//, '') as DashboardPanelId;
@@ -30,6 +33,8 @@ export default function DashboardHeader() {
       <div className="flex items-center gap-1.5 text-[13px]">
         <span className="text-muted-foreground">{APP_NAME}</span>
         <span className="text-muted-foreground/40">/</span>
+        <span className="text-muted-foreground">{theaterLabel}</span>
+        <span className="text-muted-foreground/40">/</span>
         {panelLabel ? (
           <>
             <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -43,20 +48,7 @@ export default function DashboardHeader() {
         )}
       </div>
 
-      <div className="ml-auto flex items-center gap-3">
-        <button
-          onClick={() => {
-            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
-          }}
-          className="flex items-center gap-2 rounded border border-border bg-muted/50 px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        >
-          <span className="hidden sm:inline">Search...</span>
-          <span className="flex items-center gap-0.5">
-            <Kbd>{'\u2318'}</Kbd>
-            <Kbd>K</Kbd>
-          </span>
-        </button>
-
+      <div className="ml-auto flex items-center">
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-status-clear" style={{ animation: 'pulse-dot 2s ease-in-out infinite' }} />
           LIVE

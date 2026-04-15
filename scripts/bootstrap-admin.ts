@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { AUTH_REQUIRE_2FA } from '@/lib/auth/config';
 import { getPrisma } from '@/lib/prisma';
 import { hashPassword, normalizeUsername } from '@/lib/auth/crypto';
 
@@ -23,6 +24,9 @@ async function main() {
   }
 
   const passwordHash = await hashPassword(password);
+  const defaultAuthState = AUTH_REQUIRE_2FA
+    ? { status: 'pending_2fa_setup' as const, totpRequired: true }
+    : { status: 'active' as const, totpRequired: false };
   const existingUser = await prisma.user.findUnique({
     where: { usernameCanonical: canonical },
     select: { id: true },
@@ -36,8 +40,8 @@ async function main() {
           usernameCanonical: canonical,
           passwordHash,
           role: 'admin',
-          status: 'pending_2fa_setup',
-          totpRequired: true,
+          status: defaultAuthState.status,
+          totpRequired: defaultAuthState.totpRequired,
         },
       })
     : await prisma.user.create({
@@ -46,8 +50,8 @@ async function main() {
           usernameCanonical: canonical,
           passwordHash,
           role: 'admin',
-          status: 'pending_2fa_setup',
-          totpRequired: true,
+          status: defaultAuthState.status,
+          totpRequired: defaultAuthState.totpRequired,
         },
       });
 
@@ -70,7 +74,11 @@ async function main() {
     },
   });
 
-  console.log(`Bootstrapped admin ${user.username}. They will finish 2FA setup on first login.`);
+  console.log(
+    AUTH_REQUIRE_2FA
+      ? `Bootstrapped admin ${user.username}. They will finish 2FA setup on first login.`
+      : `Bootstrapped admin ${user.username}. They can sign in immediately and enable 2FA later.`
+  );
 }
 
 main()

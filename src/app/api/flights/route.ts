@@ -1,17 +1,49 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-import { authorizeApiSession } from '@/lib/auth/session';
+import { authorizeReadApiAccess } from '@/lib/auth/session';
 import { fetchWithTimeout } from '@/lib/fetcher';
+import { getTheaterFromRequest, type TheaterId } from '@/lib/theater';
 
 export const dynamic = 'force-dynamic';
+
+const FLIGHT_REGION_CONFIG: Record<TheaterId, {
+  regionPath: string;
+  bounds: {
+    minLat: number;
+    maxLat: number;
+    minLon: number;
+    maxLon: number;
+  };
+}> = {
+  'middle-east': {
+    regionPath: 'https://api.adsb.lol/v2/lat/30/lon/48/dist/2500',
+    bounds: {
+      minLat: 10,
+      maxLat: 45,
+      minLon: 20,
+      maxLon: 70,
+    },
+  },
+  ukraine: {
+    regionPath: 'https://api.adsb.lol/v2/lat/49/lon/32/dist/2000',
+    bounds: {
+      minLat: 43,
+      maxLat: 57,
+      minLon: 20,
+      maxLon: 42,
+    },
+  },
+};
 
 // Uses adsb.lol — free, community-run ADS-B aggregator
 // Has a military database (dbFlags bit 1) that properly identifies military aircraft
 // Much better than OpenSky for mil tracking
 
-export async function GET() {
-  const auth = await authorizeApiSession();
+export async function GET(request: NextRequest) {
+  const auth = await authorizeReadApiAccess();
   if (auth instanceof NextResponse) return auth;
+  const theater = getTheaterFromRequest(request);
+  const regionConfig = FLIGHT_REGION_CONFIG[theater];
 
   try {
     // Fetch all sources in parallel with short timeouts
@@ -20,7 +52,7 @@ export async function GET() {
         timeout: 8000,
         headers: { 'Accept': 'application/json' },
       }).then(r => r.ok ? r.json() : { ac: [] }),
-      fetchWithTimeout('https://api.adsb.lol/v2/lat/30/lon/48/dist/2500', {
+      fetchWithTimeout(regionConfig.regionPath, {
         timeout: 8000,
         headers: { 'Accept': 'application/json' },
       }).then(r => r.ok ? r.json() : { ac: [] }),
@@ -29,9 +61,14 @@ export async function GET() {
     const milData = milResult.status === 'fulfilled' ? milResult.value : { ac: [] };
     const regionData = regionResult.status === 'fulfilled' ? regionResult.value : { ac: [] };
 
-    // Filter mil feed to Middle East region
+    // Filter the global mil feed down to the selected theater
     const milAircraft = (milData.ac || []).filter((a: AircraftState) =>
-      a.lat && a.lon && a.lat >= 10 && a.lat <= 45 && a.lon >= 20 && a.lon <= 70
+      a.lat
+      && a.lon
+      && a.lat >= regionConfig.bounds.minLat
+      && a.lat <= regionConfig.bounds.maxLat
+      && a.lon >= regionConfig.bounds.minLon
+      && a.lon <= regionConfig.bounds.maxLon
     );
 
     // From regional feed, get military flagged + interesting aircraft
