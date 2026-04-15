@@ -56,6 +56,19 @@ test('encrypted strings can be decrypted with a configured fallback key', () => 
   process.env.AUTH_ENCRYPTION_KEY_FALLBACKS = originalFallbacks;
 });
 
+test('placeholder encryption keys are rejected', () => {
+  const originalKey = process.env.AUTH_ENCRYPTION_KEY;
+
+  process.env.AUTH_ENCRYPTION_KEY = 'replace-with-a-long-random-secret-value';
+
+  assert.throws(
+    () => encryptString('classified'),
+    /placeholder value/,
+  );
+
+  process.env.AUTH_ENCRYPTION_KEY = originalKey;
+});
+
 test('encrypted payloads expire as expected', async () => {
   const token = issueEncryptedPayload({ userId: 'user_1' }, 10);
   assert.deepEqual(readEncryptedPayload<{ userId: string }>(token), { userId: 'user_1' });

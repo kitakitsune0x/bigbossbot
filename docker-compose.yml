@@ -34,13 +34,13 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       PORT: 3000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/big_boss
-      AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:-replace-with-a-long-random-secret-value}
+      AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:-}
       AUTH_ENCRYPTION_KEY_FALLBACKS: ${AUTH_ENCRYPTION_KEY_FALLBACKS:-}
       SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-big_boss_session}
       AUTH_SESSION_DAYS: ${AUTH_SESSION_DAYS:-30}
       AUTH_REQUIRE_2FA: ${AUTH_REQUIRE_2FA:-false}
       BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-big_boss_admin}
-      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-replace-with-a-strong-password}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
     ports:
       - "${APP_PORT:-3000}:3000"
     healthcheck:

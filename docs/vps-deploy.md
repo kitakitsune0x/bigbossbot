@@ -17,6 +17,7 @@ This deployment path is designed for a public GitHub repository with private run
 2. Decide whether your GHCR package will be public or private.
    - Public is the simplest path. The VPS can pull the image without a registry login.
    - Private also works, but you must run `docker login ghcr.io` on the VPS with a token that has `read:packages`.
+   - A public repository does not automatically make the GHCR container package public.
 3. Add your domain to Cloudflare if you want the origin IP hidden.
 
 ## Cloudflare Tunnel Setup
@@ -43,6 +44,8 @@ Edit `.env.production` and replace every placeholder value before starting anyth
 - `BOOTSTRAP_ADMIN_USERNAME`
 - `BOOTSTRAP_ADMIN_PASSWORD`
 - `CLOUDFLARE_TUNNEL_TOKEN`
+
+The container refuses to start if `AUTH_ENCRYPTION_KEY` or `BOOTSTRAP_ADMIN_PASSWORD` still use the example placeholder values.
 
 If you want automatic deploys on every push, leave `BIG_BOSS_IMAGE` on `:latest`.
 

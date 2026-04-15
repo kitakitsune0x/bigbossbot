@@ -128,6 +128,12 @@ All data sources are free and require no API keys.
 
 ```bash
 cp .env.example .env
+openssl rand -hex 32
+```
+
+Paste the generated value into `AUTH_ENCRYPTION_KEY` in `.env`, then set `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD`.
+
+```bash
 npm run db:up
 npm install
 npm run db:migrate
@@ -145,12 +151,18 @@ You can run the full stack in Docker:
 
 ```bash
 cp .env.example .env
+openssl rand -hex 32
+```
+
+Paste the generated value into `AUTH_ENCRYPTION_KEY` in `.env`, then set `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD`.
+
+```bash
 docker compose up --build
 ```
 
 If `54329` or `3000` is already in use on your machine, set `POSTGRES_PORT` and/or `APP_PORT` in `.env` before starting the stack.
 
-For anything beyond throwaway local testing, replace the placeholder `AUTH_ENCRYPTION_KEY` and `BOOTSTRAP_ADMIN_PASSWORD` values in `.env` before you start the stack.
+The container now refuses to start if `AUTH_ENCRYPTION_KEY` or `BOOTSTRAP_ADMIN_PASSWORD` still use the example placeholder values.
 
 That starts:
 
@@ -179,6 +191,7 @@ GitHub publishes the app image to `ghcr.io/kitakitsune0x/bigbossbot`.
 - `main` updates the `latest` and `main` tags
 - each published build also gets a `YYYY.MM.DD` tag based on the build date
 - tagged releases publish matching version tags
+- if you want anonymous `docker pull` from a public VM, make the GHCR package public after the first publish
 - Docker Compose uses `BIG_BOSS_IMAGE` and defaults to the GHCR image name above
 
 ## Build Versions
@@ -189,45 +202,45 @@ GitHub publishes the app image to `ghcr.io/kitakitsune0x/bigbossbot`.
 
 ## Self-Hosting
 
-For a simple self-hosted deployment, use Docker Compose with the published GHCR image.
+For a public repository, treat the top-level [docker-compose.yml](./docker-compose.yml) file as local development and single-machine testing.
 
-If you want automatic VPS deploys on every push while keeping the origin IP private, use [docs/vps-deploy.md](./docs/vps-deploy.md) together with [docker-compose.vps.yml](./docker-compose.vps.yml). That path is designed for GHCR + Watchtower + Cloudflare Tunnel, with all runtime secrets staying only in `.env.production` on the VPS.
+For an internet-exposed VM, use [docs/vps-deploy.md](./docs/vps-deploy.md) together with [docker-compose.vps.yml](./docker-compose.vps.yml). That path is designed for a public repo, Docker-based self-hosting, GHCR image updates, and private runtime secrets that stay only on the server.
 
 1. Clone the repo on your server and move into the project directory.
 
 ```bash
-git clone git@github.com:kitakitsune0x/bigbossbot.git
+git clone https://github.com/kitakitsune0x/bigbossbot.git
 cd bigbossbot
 ```
 
-2. Create your runtime env file.
+2. Copy the production env template and edit it on the server only.
 
 ```bash
-cp .env.example .env
+cp .env.production.example .env.production
 ```
 
-3. Edit `.env` before starting anything. At minimum, set:
+3. Replace every placeholder value in `.env.production`. At minimum, set:
 
 - `BIG_BOSS_IMAGE=ghcr.io/kitakitsune0x/bigbossbot:YYYY.MM.DD` to pin an exact build, or leave `:latest` if you want the moving default
 - `AUTH_ENCRYPTION_KEY` to a long random secret
 - `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD` to the first admin account you want created
-- `APP_PORT` and `POSTGRES_PORT` if `3000` or `54329` are already taken on your host
+- `POSTGRES_PASSWORD` and `DATABASE_URL` for the bundled Postgres service
+- `CLOUDFLARE_TUNNEL_TOKEN` if you are using the bundled tunnel service
 
-4. Pull the published containers and start the stack.
+4. Pull the published containers and start the production stack.
 
 ```bash
-docker compose pull
-docker compose up -d --no-build
+docker compose --env-file .env.production -f docker-compose.vps.yml up -d
 ```
 
-5. Open `http://YOUR_SERVER_IP:APP_PORT/login` and sign in with the bootstrap admin credentials you set in `.env`.
+5. Follow the full VM deployment guide in [docs/vps-deploy.md](./docs/vps-deploy.md) for automatic updates, rollbacks, and reverse-proxy or Cloudflare Tunnel setup.
 
-6. Put the app behind HTTPS before exposing it publicly. A reverse proxy such as Caddy, Nginx, or Traefik is the simplest production setup.
+If you prefer a traditional reverse proxy instead of Cloudflare Tunnel, keep the `app` service private on the Docker network and expose it through Caddy, Nginx, or Traefik.
 
 Recommended production setup:
 
 - keep the bundled Postgres volume mounted so data survives container restarts
-- update by changing `BIG_BOSS_IMAGE` to a newer `YYYY.MM.DD` tag, then run `docker compose pull && docker compose up -d --no-build`
+- update by changing `BIG_BOSS_IMAGE` to a newer `YYYY.MM.DD` tag, then run `docker compose --env-file .env.production -f docker-compose.vps.yml up -d`
 - if you rebuild locally and want a pinned date tag inside the image metadata, export `APP_VERSION=YYYY.MM.DD` before `docker compose build`
 
 ## Auth Setup Notes

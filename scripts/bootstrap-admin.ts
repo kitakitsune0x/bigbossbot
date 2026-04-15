@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { AUTH_REQUIRE_2FA } from '@/lib/auth/config';
 import { getPrisma } from '@/lib/prisma';
 import { hashPassword, normalizeUsername } from '@/lib/auth/crypto';
+import { isPlaceholderEnvValue } from '@/lib/env';
 
 async function main() {
   const username = process.env.BOOTSTRAP_ADMIN_USERNAME;
@@ -9,6 +10,10 @@ async function main() {
 
   if (!username || !password) {
     throw new Error('BOOTSTRAP_ADMIN_USERNAME and BOOTSTRAP_ADMIN_PASSWORD must be set');
+  }
+
+  if (isPlaceholderEnvValue(password)) {
+    throw new Error('BOOTSTRAP_ADMIN_PASSWORD still uses the example placeholder value. Set a real password before bootstrapping an admin.');
   }
 
   const prisma = getPrisma();

@@ -2,6 +2,28 @@
 
 set -eu
 
+assert_not_placeholder() {
+  var_name="$1"
+  value="$2"
+
+  case "$value" in
+    "" )
+      echo "$var_name must be set before starting the container."
+      exit 1
+      ;;
+    replace-with-a-long-random-secret|replace-with-a-long-random-secret-value|replace-with-a-strong-password|replace-with-a-long-random-password|replace-with-your-cloudflare-tunnel-token)
+      echo "$var_name still uses the example placeholder value. Set a real secret before starting the container."
+      exit 1
+      ;;
+  esac
+}
+
+assert_not_placeholder AUTH_ENCRYPTION_KEY "${AUTH_ENCRYPTION_KEY:-}"
+
+if [ -n "${BOOTSTRAP_ADMIN_PASSWORD:-}" ]; then
+  assert_not_placeholder BOOTSTRAP_ADMIN_PASSWORD "${BOOTSTRAP_ADMIN_PASSWORD}"
+fi
+
 echo "Applying Prisma migrations..."
 ./node_modules/.bin/prisma migrate deploy
 

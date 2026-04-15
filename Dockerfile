@@ -3,6 +3,9 @@ FROM node:22-alpine
 ARG APP_VERSION
 
 LABEL org.opencontainers.image.source="https://github.com/kitakitsune0x/bigbossbot"
+LABEL org.opencontainers.image.title="BIG BOSS BOT"
+LABEL org.opencontainers.image.description="Real-time OSINT command center for monitoring the Middle East conflict."
+LABEL org.opencontainers.image.licenses="MIT"
 
 WORKDIR /app
 
@@ -22,6 +25,10 @@ RUN npm ci --include=dev
 COPY . .
 
 RUN npm run build
+
+RUN chown -R node:node /app
+
+USER node
 
 EXPOSE 3000
 

@@ -2,6 +2,7 @@ import { randomBytes, createHash, createCipheriv, createDecipheriv } from 'node:
 import { hash, verify } from '@node-rs/argon2';
 import { Secret, TOTP } from 'otpauth';
 import { APP_NAME, RECOVERY_CODE_COUNT } from '@/lib/auth/config';
+import { isPlaceholderEnvValue } from '@/lib/env';
 
 const ARGON_OPTIONS = {
   memoryCost: 19_456,
@@ -21,10 +22,14 @@ function getEncryptionSecrets() {
     throw new Error('AUTH_ENCRYPTION_KEY is not configured');
   }
 
+  if (isPlaceholderEnvValue(secret)) {
+    throw new Error('AUTH_ENCRYPTION_KEY still uses the example placeholder value. Set a real secret before starting the app.');
+  }
+
   const fallbacks = (process.env.AUTH_ENCRYPTION_KEY_FALLBACKS ?? '')
     .split(',')
     .map((value) => value.trim())
-    .filter(Boolean);
+    .filter((value) => value && !isPlaceholderEnvValue(value));
 
   return [secret, ...fallbacks];
 }
