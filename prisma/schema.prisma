@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  admin
+  member
+}
+
+enum AccountStatus {
+  pending_2fa_setup
+  active
+  disabled
+}
+
+model User {
+  id                String         @id @default(cuid())
+  username          String
+  usernameCanonical String         @unique
+  passwordHash      String
+  role              UserRole       @default(member)
+  status            AccountStatus  @default(pending_2fa_setup)
+  totpRequired      Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  lastLoginAt       DateTime?
+  sessions          Session[]
+  totpCredential    TotpCredential?
+  recoveryCodes     RecoveryCode[]
+  preferences       UserPreference?
+  auditLogs         AuditLog[]
+
+  @@index([role])
+  @@index([status])
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  tokenHash  String    @unique
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model TotpCredential {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  secretCiphertext String
+  issuer           String
+  label            String
+  algorithm        String    @default("SHA1")
+  digits           Int       @default(6)
+  period           Int       @default(30)
+  verifiedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String    @unique
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model UserPreference {
+  id                          String   @id @default(cuid())
+  userId                      String   @unique
+  alertSoundEnabled           Boolean  @default(true)
+  desktopNotificationsEnabled Boolean  @default(true)
+  hiddenPanels                Json     @default("[]")
+  panelOrder                  Json     @default("[]")
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  user                        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id                String   @id @default(cuid())
+  userId            String?
+  usernameCanonical String?
+  action            String
+  ipAddress         String?
+  userAgent         String?
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([usernameCanonical, createdAt])
+  @@index([action, createdAt])
+}

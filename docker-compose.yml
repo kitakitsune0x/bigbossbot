@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: aware-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: aware
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "54329:5432"
+    volumes:
+      - aware-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aware"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  aware-postgres-data:
