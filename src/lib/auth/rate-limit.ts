@@ -4,17 +4,17 @@ type Bucket = {
 };
 
 type GlobalBuckets = typeof globalThis & {
-  __awareRateLimitBuckets?: Map<string, Bucket>;
+  __bigBossRateLimitBuckets?: Map<string, Bucket>;
 };
 
 function getBuckets() {
   const globalBuckets = globalThis as GlobalBuckets;
 
-  if (!globalBuckets.__awareRateLimitBuckets) {
-    globalBuckets.__awareRateLimitBuckets = new Map();
+  if (!globalBuckets.__bigBossRateLimitBuckets) {
+    globalBuckets.__bigBossRateLimitBuckets = new Map();
   }
 
-  return globalBuckets.__awareRateLimitBuckets;
+  return globalBuckets.__bigBossRateLimitBuckets;
 }
 
 export function consumeRateLimit(key: string, maxAttempts: number, windowMs: number) {

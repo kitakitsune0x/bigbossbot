@@ -42,7 +42,7 @@ import { useDashboardPreferences } from '@/components/dashboard/PreferencesProvi
 import { PanelOpsProvider } from '@/components/dashboard/CommandPalette';
 import KeyboardHandler from '@/components/dashboard/KeyboardHandler';
 import { DASHBOARD_PANEL_FOCUS_EVENT } from '@/components/dashboard/panel-navigation';
-import { DASHBOARD_PANEL_LABELS, type DashboardPanelId } from '@/lib/auth/config';
+import { APP_SLUG, DASHBOARD_PANEL_LABELS, type DashboardPanelId } from '@/lib/auth/config';
 
 const ConflictMap = dynamic(() => import('@/components/map/ConflictMap'), {
   ssr: false,
@@ -93,7 +93,7 @@ const SIZE_CLASSES: Record<string, string> = {
   sm: 'col-span-12 sm:col-span-6 xl:col-span-2',
 };
 
-const DASHBOARD_DND_CONTEXT_ID = 'aware-dashboard-dnd';
+const DASHBOARD_DND_CONTEXT_ID = `${APP_SLUG}-dashboard-dnd`;
 
 function SortablePanel({
   id,

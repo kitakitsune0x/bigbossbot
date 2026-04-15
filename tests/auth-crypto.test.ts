@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-process.env.AUTH_ENCRYPTION_KEY = 'test-aware-encryption-key';
+process.env.AUTH_ENCRYPTION_KEY = 'test-big-boss-encryption-key';
 
 import {
   buildTotpFromBase32,
@@ -38,6 +38,22 @@ test('encrypted strings round-trip cleanly', () => {
 
   assert.notEqual(cipher, 'classified');
   assert.equal(decryptString(cipher), 'classified');
+});
+
+test('encrypted strings can be decrypted with a configured fallback key', () => {
+  const originalKey = process.env.AUTH_ENCRYPTION_KEY;
+  const originalFallbacks = process.env.AUTH_ENCRYPTION_KEY_FALLBACKS;
+
+  process.env.AUTH_ENCRYPTION_KEY = 'legacy-aware-key';
+  const cipher = encryptString('classified');
+
+  process.env.AUTH_ENCRYPTION_KEY = 'new-big-boss-key';
+  process.env.AUTH_ENCRYPTION_KEY_FALLBACKS = 'legacy-aware-key';
+
+  assert.equal(decryptString(cipher), 'classified');
+
+  process.env.AUTH_ENCRYPTION_KEY = originalKey;
+  process.env.AUTH_ENCRYPTION_KEY_FALLBACKS = originalFallbacks;
 });
 
 test('encrypted payloads expire as expected', async () => {

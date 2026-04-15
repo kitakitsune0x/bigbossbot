@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { Kbd } from '@/components/dashboard/ShortcutsHelp';
-import { DASHBOARD_PANEL_LABELS, type DashboardPanelId } from '@/lib/auth/config';
+import { APP_NAME, DASHBOARD_PANEL_LABELS, type DashboardPanelId } from '@/lib/auth/config';
 
 const PAGE_LABELS: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -20,7 +20,7 @@ export default function DashboardHeader() {
   const slug = pathname.replace(/^\//, '') as DashboardPanelId;
   const panelLabel = DASHBOARD_PANEL_LABELS[slug] ?? undefined;
 
-  const pageTitle = panelLabel ?? PAGE_LABELS[pathname] ?? 'AWARE';
+  const pageTitle = panelLabel ?? PAGE_LABELS[pathname] ?? APP_NAME;
 
   return (
     <header className="flex h-10 shrink-0 items-center gap-2 border-b bg-background px-3">
@@ -28,7 +28,7 @@ export default function DashboardHeader() {
       <Separator orientation="vertical" className="mr-1 h-4" />
 
       <div className="flex items-center gap-1.5 text-[13px]">
-        <span className="text-muted-foreground">AWARE</span>
+        <span className="text-muted-foreground">{APP_NAME}</span>
         <span className="text-muted-foreground/40">/</span>
         {panelLabel ? (
           <>

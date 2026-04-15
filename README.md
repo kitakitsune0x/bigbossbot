@@ -1,6 +1,6 @@
-# AWARE
+# BIG BOSS
 
-![AWARE Dashboard](./AWARE.png)
+![BIG BOSS Dashboard](./BIG-BOSS.png)
 
 Real-time OSINT command center for monitoring the Middle East conflict. Aggregates open-source intelligence from 50+ sources across news, Telegram, military tracking, financial markets, and more into a single dashboard.
 

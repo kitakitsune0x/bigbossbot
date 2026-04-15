@@ -24,7 +24,7 @@ export async function GET() {
     const res = await fetchWithTimeout('https://api.tzevaadom.co.il/notifications', {
       timeout: 12000,
       headers: {
-        'User-Agent': 'AWARE/1.0',
+        'User-Agent': 'BIG-BOSS/1.0',
         'Accept': 'application/json',
       },
     });

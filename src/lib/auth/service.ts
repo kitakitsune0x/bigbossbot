@@ -166,6 +166,14 @@ async function readLoginChallenge() {
   }
 }
 
+function tryDecryptTotpSecret(cipherText: string) {
+  try {
+    return decryptString(cipherText);
+  } catch {
+    return null;
+  }
+}
+
 async function touchSessionIfNeeded(session: {
   id: string;
   updatedAt: Date;
@@ -555,7 +563,20 @@ export async function verifyLoginSecondFactor(input: { code?: string; recoveryCo
   let verified = false;
 
   if (input.code) {
-    const secretBase32 = decryptString(user.totpCredential.secretCiphertext);
+    const secretBase32 = tryDecryptTotpSecret(user.totpCredential.secretCiphertext);
+
+    if (!secretBase32) {
+      await auditLog('login_2fa_secret_unreadable', {
+        userId: user.id,
+        usernameCanonical: user.usernameCanonical,
+      });
+
+      return {
+        ok: false as const,
+        message: 'Your two-factor secret could not be read. Please ask an admin to reset 2FA for this account.',
+      };
+    }
+
     verified = verifyTotpCode(secretBase32, user.username, input.code);
   } else if (input.recoveryCode) {
     const normalized = normalizeRecoveryCode(input.recoveryCode);
@@ -618,7 +639,9 @@ export async function getOrCreateTotpSetup(userId: string) {
     };
   }
 
-  const existingSecret = user.totpCredential ? decryptString(user.totpCredential.secretCiphertext) : null;
+  const existingSecret = user.totpCredential
+    ? tryDecryptTotpSecret(user.totpCredential.secretCiphertext)
+    : null;
   const created = existingSecret
     ? { secretBase32: existingSecret, uri: undefined as string | undefined }
     : createTotpSecret(user.username);
@@ -669,7 +692,15 @@ export async function completeTotpSetup(userId: string, code: string) {
     };
   }
 
-  const secretBase32 = decryptString(user.totpCredential.secretCiphertext);
+  const secretBase32 = tryDecryptTotpSecret(user.totpCredential.secretCiphertext);
+
+  if (!secretBase32) {
+    return {
+      ok: false as const,
+      message: 'The stored authenticator secret could not be read. Restart setup and try again.',
+    };
+  }
+
   const verified = verifyTotpCode(secretBase32, user.username, code);
 
   if (!verified) {

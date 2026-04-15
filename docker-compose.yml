@@ -1,21 +1,21 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: aware-postgres
+    container_name: big-boss-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: aware
+      POSTGRES_DB: big_boss
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
       - "54329:5432"
     volumes:
-      - aware-postgres-data:/var/lib/postgresql/data
+      - big-boss-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d aware"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d big_boss"]
       interval: 5s
       timeout: 5s
       retries: 20
 
 volumes:
-  aware-postgres-data:
+  big-boss-postgres-data:

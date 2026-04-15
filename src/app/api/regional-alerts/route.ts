@@ -129,7 +129,7 @@ export async function GET() {
         try {
           const res = await fetchWithTimeout(url, {
             timeout: 8000,
-            headers: { 'User-Agent': 'AWARE/1.0', 'Accept': 'application/rss+xml, text/xml, */*' },
+            headers: { 'User-Agent': 'BIG-BOSS/1.0', 'Accept': 'application/rss+xml, text/xml, */*' },
           });
           if (!res.ok) return { ...country, events: [] };
 

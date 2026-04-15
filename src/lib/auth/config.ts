@@ -1,7 +1,11 @@
-export const APP_NAME = 'AWARE';
+export const APP_NAME = 'BIG BOSS';
+export const APP_MONOGRAM = 'BB';
+export const APP_SLUG = 'big-boss';
+export const APP_COOKIE_PREFIX = 'big_boss';
+export const APP_USER_AGENT = 'BIG-BOSS/1.0';
 
-export const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? 'aware_session';
-export const LOGIN_CHALLENGE_COOKIE_NAME = 'aware_login_challenge';
+export const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? `${APP_COOKIE_PREFIX}_session`;
+export const LOGIN_CHALLENGE_COOKIE_NAME = `${APP_COOKIE_PREFIX}_login_challenge`;
 
 export const SESSION_TTL_MS = Number(process.env.AUTH_SESSION_DAYS ?? '30') * 24 * 60 * 60 * 1000;
 export const SESSION_ROLLING_WINDOW_MS = 6 * 60 * 60 * 1000;

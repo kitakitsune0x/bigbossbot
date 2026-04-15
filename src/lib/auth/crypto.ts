@@ -10,14 +10,27 @@ const ARGON_OPTIONS = {
   outputLen: 32,
 };
 
-function getEncryptionKey() {
+function buildEncryptionKey(secret: string) {
+  return createHash('sha256').update(secret).digest();
+}
+
+function getEncryptionSecrets() {
   const secret = process.env.AUTH_ENCRYPTION_KEY;
 
   if (!secret) {
     throw new Error('AUTH_ENCRYPTION_KEY is not configured');
   }
 
-  return createHash('sha256').update(secret).digest();
+  const fallbacks = (process.env.AUTH_ENCRYPTION_KEY_FALLBACKS ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return [secret, ...fallbacks];
+}
+
+function getEncryptionKey() {
+  return buildEncryptionKey(getEncryptionSecrets()[0]);
 }
 
 export function normalizeUsername(username: string) {
@@ -60,19 +73,29 @@ export function decryptString(cipherText: string) {
     throw new Error('Invalid cipher text payload');
   }
 
-  const decipher = createDecipheriv(
-    'aes-256-gcm',
-    getEncryptionKey(),
-    Buffer.from(ivPart, 'base64url')
+  const iv = Buffer.from(ivPart, 'base64url');
+  const authTag = Buffer.from(authTagPart, 'base64url');
+  const encrypted = Buffer.from(encryptedPart, 'base64url');
+  let lastError: unknown;
+
+  for (const secret of getEncryptionSecrets()) {
+    try {
+      const decipher = createDecipheriv('aes-256-gcm', buildEncryptionKey(secret), iv);
+      decipher.setAuthTag(authTag);
+      const decrypted = Buffer.concat([
+        decipher.update(encrypted),
+        decipher.final(),
+      ]);
+
+      return decrypted.toString('utf8');
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new Error(
+    lastError instanceof Error ? `Unable to decrypt encrypted payload: ${lastError.message}` : 'Unable to decrypt encrypted payload',
   );
-
-  decipher.setAuthTag(Buffer.from(authTagPart, 'base64url'));
-  const decrypted = Buffer.concat([
-    decipher.update(Buffer.from(encryptedPart, 'base64url')),
-    decipher.final(),
-  ]);
-
-  return decrypted.toString('utf8');
 }
 
 export function issueEncryptedPayload<T extends object>(payload: T, ttlMs: number) {

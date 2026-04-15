@@ -7,6 +7,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54329/aware",
+    url: process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54329/big_boss",
   },
 });

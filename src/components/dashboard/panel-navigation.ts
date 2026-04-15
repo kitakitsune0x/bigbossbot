@@ -1,6 +1,6 @@
-import type { DashboardPanelId } from '@/lib/auth/config';
+import { APP_SLUG, type DashboardPanelId } from '@/lib/auth/config';
 
-export const DASHBOARD_PANEL_FOCUS_EVENT = 'aware:focus-dashboard-panel';
+export const DASHBOARD_PANEL_FOCUS_EVENT = `${APP_SLUG}:focus-dashboard-panel`;
 
 type PlainLeftClickLike = {
   altKey: boolean;

@@ -2,7 +2,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@/generated/prisma/client';
 
 type GlobalPrisma = typeof globalThis & {
-  __awarePrisma?: PrismaClient;
+  __bigBossPrisma?: PrismaClient;
 };
 
 function createPrismaClient() {
@@ -24,9 +24,9 @@ function createPrismaClient() {
 export function getPrisma() {
   const globalForPrisma = globalThis as GlobalPrisma;
 
-  if (!globalForPrisma.__awarePrisma) {
-    globalForPrisma.__awarePrisma = createPrismaClient();
+  if (!globalForPrisma.__bigBossPrisma) {
+    globalForPrisma.__bigBossPrisma = createPrismaClient();
   }
 
-  return globalForPrisma.__awarePrisma;
+  return globalForPrisma.__bigBossPrisma;
 }

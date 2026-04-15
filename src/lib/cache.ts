@@ -6,15 +6,15 @@
 type CacheEntry<T> = { value: T; expiresAt: number };
 
 type GlobalCache = typeof globalThis & {
-  __awareCache?: Map<string, CacheEntry<unknown>>;
+  __bigBossCache?: Map<string, CacheEntry<unknown>>;
 };
 
 function getStore(): Map<string, CacheEntry<unknown>> {
   const g = globalThis as GlobalCache;
-  if (!g.__awareCache) {
-    g.__awareCache = new Map();
+  if (!g.__bigBossCache) {
+    g.__bigBossCache = new Map();
   }
-  return g.__awareCache;
+  return g.__bigBossCache;
 }
 
 export function cacheGet<T>(key: string): T | undefined {

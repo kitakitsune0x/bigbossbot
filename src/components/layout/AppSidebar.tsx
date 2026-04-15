@@ -46,7 +46,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { primeDataFeed } from '@/lib/hooks';
-import type { DashboardPanelId } from '@/lib/auth/config';
+import { APP_MONOGRAM, APP_NAME, type DashboardPanelId } from '@/lib/auth/config';
 
 type AppSidebarProps = {
   username: string;
@@ -244,10 +244,10 @@ export default function AppSidebar({ username, role }: AppSidebarProps) {
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-[10px] font-bold">
-                  AW
+                  {APP_MONOGRAM}
                 </div>
                 <div className="grid flex-1 text-left leading-tight">
-                  <span className="truncate text-sm font-semibold tracking-wider">AWARE</span>
+                  <span className="truncate text-sm font-semibold tracking-wider">{APP_NAME}</span>
                   <span className="truncate text-xs text-muted-foreground">Command Center</span>
                 </div>
               </Link>

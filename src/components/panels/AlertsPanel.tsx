@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useDashboardPreferences } from '@/components/dashboard/PreferencesProvider';
+import { APP_NAME, APP_SLUG } from '@/lib/auth/config';
 import { useDataFeed } from '@/lib/hooks';
 import { playAlertSound } from '@/lib/generateAlert';
 
@@ -40,7 +41,7 @@ export default function AlertsPanel() {
     if (data.status === 'ACTIVE' && prevStatus.current === 'CLEAR' && soundEnabled && hasInteracted) {
       playAlertSound('urgent');
       if (desktopNotificationsEnabled && Notification.permission === 'granted') {
-        new Notification('AWARE ALERT', { body: `${data.activeCount} active alert(s)`, icon: '/favicon.ico', tag: 'aware-alert' });
+        new Notification(`${APP_NAME} ALERT`, { body: `${data.activeCount} active alert(s)`, icon: '/favicon.ico', tag: `${APP_SLUG}-alert` });
       }
     }
     prevStatus.current = data.status;
