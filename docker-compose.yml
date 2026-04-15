@@ -22,6 +22,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-}
     container_name: big-boss-app
     restart: unless-stopped
     depends_on:
@@ -53,6 +55,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-}
     profiles: ["mcp"]
     depends_on:
       app:

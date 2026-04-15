@@ -150,10 +150,14 @@ docker compose up --build
 
 If `54329` or `3000` is already in use on your machine, set `POSTGRES_PORT` and/or `APP_PORT` in `.env` before starting the stack.
 
+For anything beyond throwaway local testing, replace the placeholder `AUTH_ENCRYPTION_KEY` and `BOOTSTRAP_ADMIN_PASSWORD` values in `.env` before you start the stack.
+
 That starts:
 
 - `postgres` on `127.0.0.1:${POSTGRES_PORT:-54329}` by default
 - `app` on [http://localhost:3000](http://localhost:3000) by default
+
+If you also want the bundled MCP sidecar in Docker, use `docker compose --profile mcp up --build` and pass `BIG_BOSS_API_TOKEN` in `.env`.
 
 The app container automatically:
 
@@ -172,33 +176,59 @@ Useful scripts:
 
 GitHub publishes the app image to `ghcr.io/kitakitsune0x/bigbossbot`.
 
-- `main` updates the `latest` tag
+- `main` updates the `latest` and `main` tags
 - each published build also gets a `YYYY.MM.DD` tag based on the build date
 - tagged releases publish matching version tags
 - Docker Compose uses `BIG_BOSS_IMAGE` and defaults to the GHCR image name above
 
+## Build Versions
+
+- `npm run build` stamps each build with a date version in `YYYY.MM.DD` format
+- the build version is persisted in `.build-version` so the MCP server can report the same version after the build finishes
+- set `APP_VERSION` before `npm run build` or `docker compose build` if you need to override the auto-generated date for a deterministic rebuild
+
 ## Self-Hosting
 
-For a simple self-hosted deployment, use Docker Compose with the published GHCR image:
+For a simple self-hosted deployment, use Docker Compose with the published GHCR image.
+
+If you want automatic VPS deploys on every push while keeping the origin IP private, use [docs/vps-deploy.md](./docs/vps-deploy.md) together with [docker-compose.vps.yml](./docker-compose.vps.yml). That path is designed for GHCR + Watchtower + Cloudflare Tunnel, with all runtime secrets staying only in `.env.production` on the VPS.
+
+1. Clone the repo on your server and move into the project directory.
+
+```bash
+git clone git@github.com:kitakitsune0x/bigbossbot.git
+cd bigbossbot
+```
+
+2. Create your runtime env file.
 
 ```bash
 cp .env.example .env
+```
+
+3. Edit `.env` before starting anything. At minimum, set:
+
+- `BIG_BOSS_IMAGE=ghcr.io/kitakitsune0x/bigbossbot:YYYY.MM.DD` to pin an exact build, or leave `:latest` if you want the moving default
+- `AUTH_ENCRYPTION_KEY` to a long random secret
+- `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD` to the first admin account you want created
+- `APP_PORT` and `POSTGRES_PORT` if `3000` or `54329` are already taken on your host
+
+4. Pull the published containers and start the stack.
+
+```bash
 docker compose pull
 docker compose up -d --no-build
 ```
 
-Before you start the stack, update `.env` with at least:
+5. Open `http://YOUR_SERVER_IP:APP_PORT/login` and sign in with the bootstrap admin credentials you set in `.env`.
 
-- `BIG_BOSS_IMAGE=ghcr.io/kitakitsune0x/bigbossbot:YYYY.MM.DD` to pin an exact build, or leave `:latest` if you want the moving default
-- `AUTH_ENCRYPTION_KEY` set to a long random secret
-- `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD` set to the first admin account you want created
-- `APP_PORT` and `POSTGRES_PORT` adjusted if `3000` or `54329` are already taken on your host
+6. Put the app behind HTTPS before exposing it publicly. A reverse proxy such as Caddy, Nginx, or Traefik is the simplest production setup.
 
 Recommended production setup:
 
-- put the app behind a reverse proxy such as Caddy, Nginx, or Traefik for HTTPS
 - keep the bundled Postgres volume mounted so data survives container restarts
 - update by changing `BIG_BOSS_IMAGE` to a newer `YYYY.MM.DD` tag, then run `docker compose pull && docker compose up -d --no-build`
+- if you rebuild locally and want a pinned date tag inside the image metadata, export `APP_VERSION=YYYY.MM.DD` before `docker compose build`
 
 ## Auth Setup Notes
 
@@ -206,6 +236,7 @@ Recommended production setup:
 - `npm run db:migrate` applies the checked-in Prisma migration to the running database
 - `npm run bootstrap:admin` creates the first admin using `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD`
 - `AUTH_REQUIRE_2FA=true` forces every account through authenticator setup before `/dashboard`; the default is optional 2FA
+- `AUTH_ENCRYPTION_KEY` should be a long random secret anywhere outside disposable local development
 
 ## MCP Access
 
@@ -215,6 +246,7 @@ BIG BOSS BOT includes a local stdio MCP server for agents that need live read-on
 - Start the web app with `npm run dev`
 - Start the MCP sidecar with `npm run mcp`
 - Configure your client with `BIG_BOSS_BASE_URL` and `BIG_BOSS_API_TOKEN`
+- Docker users can run the same sidecar with `docker compose --profile mcp run --rm mcp`
 
 Full setup instructions, client config snippets, and the bundled Codex skill are in [docs/mcp.md](./docs/mcp.md).
 

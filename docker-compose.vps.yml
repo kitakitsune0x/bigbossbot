@@ -1,0 +1,89 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: big-boss-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env.production}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env.production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}
+    volumes:
+      - big-boss-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - internal
+
+  app:
+    image: ${BIG_BOSS_IMAGE:-ghcr.io/kitakitsune0x/bigbossbot:latest}
+    container_name: big-boss-app-prod
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env.production}
+      AUTH_ENCRYPTION_KEY: ${AUTH_ENCRYPTION_KEY:?Set AUTH_ENCRYPTION_KEY in .env.production}
+      AUTH_ENCRYPTION_KEY_FALLBACKS: ${AUTH_ENCRYPTION_KEY_FALLBACKS:-}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-big_boss_session}
+      AUTH_SESSION_DAYS: ${AUTH_SESSION_DAYS:-30}
+      AUTH_REQUIRE_2FA: ${AUTH_REQUIRE_2FA:-true}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1:3000/login || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+      com.centurylinklabs.watchtower.scope: "bigbossbot"
+    networks:
+      - internal
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: big-boss-watchtower
+    restart: unless-stopped
+    command:
+      - --label-enable
+      - --scope
+      - bigbossbot
+      - --cleanup
+      - --interval
+      - ${WATCHTOWER_POLL_INTERVAL:-60}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - internal
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: big-boss-cloudflared
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    command:
+      - tunnel
+      - --no-autoupdate
+      - run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?Set CLOUDFLARE_TUNNEL_TOKEN in .env.production}
+    networks:
+      - internal
+
+networks:
+  internal:
+
+volumes:
+  big-boss-postgres-data:

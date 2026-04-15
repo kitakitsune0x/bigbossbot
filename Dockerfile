@@ -2,6 +2,8 @@ FROM node:22-alpine
 
 ARG APP_VERSION
 
+LABEL org.opencontainers.image.source="https://github.com/kitakitsune0x/bigbossbot"
+
 WORKDIR /app
 
 ENV NODE_ENV=production
