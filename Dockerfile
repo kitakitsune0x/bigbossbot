@@ -10,7 +10,7 @@ RUN apk add --no-cache libc6-compat openssl
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 
-RUN npm ci
+RUN npm ci --include=dev
 
 COPY . .
 

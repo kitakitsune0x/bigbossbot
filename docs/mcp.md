@@ -5,7 +5,7 @@ BIG BOSS ships with a local stdio MCP server so Codex, Claude Desktop, and other
 ## 1. Create an agent token
 
 1. Sign in to BIG BOSS.
-2. Open `Account -> Security`.
+2. Open `Account -> Settings`.
 3. In `Agent access tokens`, create a new token.
 4. Copy the plaintext token immediately. It is only shown once.
 
@@ -18,6 +18,7 @@ npm run dev
 ```
 
 The local app usually runs at `http://127.0.0.1:3000`.
+If you changed `APP_PORT` in Docker Compose, use that host port instead.
 
 ## 3. Start the MCP server
 

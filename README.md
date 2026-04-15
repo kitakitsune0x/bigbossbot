@@ -135,7 +135,7 @@ npm run bootstrap:admin
 npm run dev
 ```
 
-The bundled Docker Postgres instance listens on `127.0.0.1:54329`.
+The bundled Docker Postgres instance listens on `127.0.0.1:${POSTGRES_PORT:-54329}`.
 
 Open [http://localhost:3000](http://localhost:3000).
 
@@ -148,10 +148,12 @@ cp .env.example .env
 docker compose up --build
 ```
 
+If `54329` or `3000` is already in use on your machine, set `POSTGRES_PORT` and/or `APP_PORT` in `.env` before starting the stack.
+
 That starts:
 
-- `postgres` on `127.0.0.1:54329`
-- `app` on [http://localhost:3000](http://localhost:3000)
+- `postgres` on `127.0.0.1:${POSTGRES_PORT:-54329}` by default
+- `app` on [http://localhost:3000](http://localhost:3000) by default
 
 The app container automatically:
 
@@ -166,6 +168,14 @@ Useful scripts:
 - `npm run docker:logs` tails the app and database logs
 - `npm run db:up` still starts only Postgres for local non-Docker app development
 
+## GHCR Image
+
+GitHub publishes the app image to `ghcr.io/kitakitsune0x/bigboss`.
+
+- `main` updates the `latest` tag
+- tagged releases publish matching version tags
+- Docker Compose uses `BIG_BOSS_IMAGE` and defaults to the GHCR image name above
+
 ## Auth Setup Notes
 
 - `npm run db:up` starts the Docker Postgres service defined in [docker-compose.yml](./docker-compose.yml)
@@ -177,7 +187,7 @@ Useful scripts:
 
 BIG BOSS includes a local stdio MCP server for agents that need live read-only intel.
 
-- Create a read-only token in `Account -> Security -> Agent access tokens`
+- Create a read-only token in `Account -> Settings -> Agent access tokens`
 - Start the web app with `npm run dev`
 - Start the MCP sidecar with `npm run mcp`
 - Configure your client with `BIG_BOSS_BASE_URL` and `BIG_BOSS_API_TOKEN`
