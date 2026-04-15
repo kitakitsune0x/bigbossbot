@@ -16,7 +16,7 @@ export default function OilPanel() {
 
   return (
     <div className="flex h-full flex-col bg-card">
-      <div className="flex items-center justify-between border-b border-border pl-4 pr-3 py-1.5 shrink-0">
+      <div className="flex items-center justify-between border-b border-border pl-6 pr-3 py-1.5 shrink-0">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground">Energy</span>
         <span className="text-[10px] text-muted-foreground font-mono">{prices?.length ?? 0} contracts</span>
       </div>

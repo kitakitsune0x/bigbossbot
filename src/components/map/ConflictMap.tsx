@@ -894,7 +894,7 @@ export default function ConflictMap({ className }: MapProps) {
 
   return (
     <div className={`bg-card ${className || ''} flex flex-col overflow-hidden`}>
-      <div className="relative z-10 flex items-center justify-between border-b border-border bg-card pl-4 pr-3 py-1.5 shrink-0">
+      <div className="relative z-10 flex items-center justify-between border-b border-border bg-card pl-6 pr-3 py-1.5 shrink-0">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground">Map</span>
         <div className="flex items-center gap-1 flex-wrap justify-end">
           {theater === 'ukraine' && (

@@ -39,7 +39,7 @@ export default function FlightsPanel() {
 
   return (
     <div className="flex h-full flex-col bg-card">
-      <div className="flex items-center justify-between border-b border-border pl-4 pr-3 py-1.5 shrink-0">
+      <div className="flex items-center justify-between border-b border-border pl-6 pr-3 py-1.5 shrink-0">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground">Mil Air</span>
         <span className="text-[10px] text-muted-foreground font-mono">{data?.military ?? 0} mil / {data?.total ?? 0} total</span>
       </div>
