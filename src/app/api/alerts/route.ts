@@ -25,7 +25,7 @@ async function fetchMiddleEastAlerts() {
     const res = await fetchWithTimeout('https://api.tzevaadom.co.il/notifications', {
       timeout: 12000,
       headers: {
-        'User-Agent': 'BIG-BOSS/1.0',
+        'User-Agent': 'BIG-BOSS-BOT/1.0',
         'Accept': 'application/json',
       },
     });
@@ -92,7 +92,7 @@ async function fetchUkraineAlerts() {
       {
         timeout: 10000,
         headers: {
-          'User-Agent': 'BIG-BOSS/1.0',
+          'User-Agent': 'BIG-BOSS-BOT/1.0',
           'Accept': 'application/rss+xml, text/xml, */*',
         },
       },

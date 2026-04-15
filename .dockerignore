@@ -10,3 +10,4 @@ tsconfig.tsbuildinfo
 .env.local
 .env.production
 .env.development
+.build-version

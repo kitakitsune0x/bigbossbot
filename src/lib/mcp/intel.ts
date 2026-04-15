@@ -305,7 +305,7 @@ async function parseJsonResponse(response: Response) {
   try {
     return await response.json();
   } catch {
-    throw new Error('BIG BOSS returned an invalid JSON response.');
+    throw new Error('BIG BOSS BOT returned an invalid JSON response.');
   }
 }
 
@@ -318,24 +318,24 @@ async function fetchFeedPayload(baseUrl: string, apiToken: string, feed: BigBoss
       headers: {
         Accept: 'application/json',
         Authorization: `Bearer ${apiToken}`,
-        'User-Agent': 'BIG-BOSS MCP/1.0',
+        'User-Agent': 'BIG-BOSS-BOT MCP/1.0',
       },
       cache: 'no-store',
     });
   } catch (error) {
     throw new Error(
       error instanceof Error
-        ? `Could not reach BIG BOSS at ${url.origin}: ${error.message}`
-        : `Could not reach BIG BOSS at ${url.origin}.`,
+        ? `Could not reach BIG BOSS BOT at ${url.origin}: ${error.message}`
+        : `Could not reach BIG BOSS BOT at ${url.origin}.`,
     );
   }
 
   if (!response.ok) {
     if (response.status === 401 || response.status === 403) {
-      throw new Error('BIG BOSS rejected the API token. Check BIG_BOSS_API_TOKEN and confirm the token is still active.');
+      throw new Error('BIG BOSS BOT rejected the API token. Check BIG_BOSS_API_TOKEN and confirm the token is still active.');
     }
 
-    throw new Error(`BIG BOSS feed "${feed}" failed with HTTP ${response.status}.`);
+    throw new Error(`BIG BOSS BOT feed "${feed}" failed with HTTP ${response.status}.`);
   }
 
   return {

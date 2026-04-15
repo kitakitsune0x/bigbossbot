@@ -1,11 +1,11 @@
 ---
 name: big-boss-mcp
-description: Use when a user asks for live BIG BOSS intelligence, situational awareness, recent conflict updates, specific BIG BOSS feed data, or searches across the Ukraine or Middle East theaters through MCP.
+description: Use when a user asks for live BIG BOSS BOT intelligence, situational awareness, recent conflict updates, specific BIG BOSS BOT feed data, or searches across the Ukraine or Middle East theaters through MCP.
 ---
 
-# BIG BOSS MCP
+# BIG BOSS BOT MCP
 
-Use this skill when the user wants live intel from BIG BOSS rather than static knowledge.
+Use this skill when the user wants live intel from BIG BOSS BOT rather than static knowledge.
 
 ## Tool choice
 

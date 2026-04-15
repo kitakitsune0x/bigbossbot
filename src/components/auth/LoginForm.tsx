@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { APP_NAME } from '@/lib/auth/config';
 
 const INITIAL_STATE: FormState = {
   step: 'credentials',
@@ -25,7 +26,7 @@ export default function LoginForm() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2 text-center">
         <h1 className="text-2xl font-semibold tracking-tight">
-          {showVerifyStep ? 'Verify your sign-in' : 'Sign in to BIG BOSS'}
+          {showVerifyStep ? 'Verify your sign-in' : `Sign in to ${APP_NAME}`}
         </h1>
         <p className="text-sm leading-6 text-muted-foreground">
           {showVerifyStep

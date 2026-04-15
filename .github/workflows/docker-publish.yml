@@ -20,6 +20,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Compute build version
+        id: build_version
+        run: echo "value=$(date -u +%Y.%m.%d)" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -34,9 +38,10 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/bigboss
+          images: ghcr.io/${{ github.repository_owner }}/bigbossbot
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.build_version.outputs.value }}
             type=ref,event=branch
             type=ref,event=tag
             type=sha,prefix=sha-
@@ -47,7 +52,11 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          build-args: |
+            APP_VERSION=${{ steps.build_version.outputs.value }}
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.version=${{ steps.build_version.outputs.value }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

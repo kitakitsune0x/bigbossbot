@@ -89,7 +89,7 @@ async function fetchRSS(feedUrl: string, source: string): Promise<NewsItem[]> {
     const res = await fetchWithTimeout(feedUrl, {
       timeout: 8000,
       headers: {
-        'User-Agent': 'BIG-BOSS/1.0 RSS Reader',
+        'User-Agent': 'BIG-BOSS-BOT/1.0 RSS Reader',
         'Accept': 'application/rss+xml, application/xml, text/xml, */*',
       },
       redirect: 'follow',

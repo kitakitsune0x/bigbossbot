@@ -1,4 +1,6 @@
 import { Buffer } from 'node:buffer';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   BIG_BOSS_MCP_DEFAULT_SNAPSHOT_FEEDS,
   BIG_BOSS_MCP_FEEDS,
@@ -7,6 +9,7 @@ import {
   getBigBossSnapshot,
   searchBigBossIntel,
 } from '@/lib/mcp/intel';
+import { resolveBuildVersion } from '@/lib/build-version';
 import { THEATER_IDS, type TheaterId } from '@/lib/theater';
 
 type JsonRpcId = string | number | null;
@@ -46,13 +49,28 @@ type RuntimeConfig = {
 };
 
 const SERVER_NAME = 'big-boss-mcp';
-const SERVER_VERSION = '0.1.0';
 const DEFAULT_PROTOCOL_VERSION = '2024-11-05';
+
+function readPersistedBuildVersion() {
+  try {
+    const version = readFileSync(join(process.cwd(), '.build-version'), 'utf8').trim();
+
+    return version || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const SERVER_VERSION = resolveBuildVersion(
+  process.env.BIG_BOSS_VERSION,
+  process.env.APP_VERSION,
+  readPersistedBuildVersion(),
+);
 
 const TOOL_DEFINITIONS = [
   {
     name: 'get_snapshot',
-    description: 'Fetch a stitched BIG BOSS situation snapshot for a theater, optionally narrowing the included feeds.',
+    description: 'Fetch a stitched BIG BOSS BOT situation snapshot for a theater, optionally narrowing the included feeds.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -76,7 +94,7 @@ const TOOL_DEFINITIONS = [
   },
   {
     name: 'search_intel',
-    description: 'Search BIG BOSS text-heavy feeds for matching news, alerts, telegram posts, conflicts, strikes, or regional watch events.',
+    description: 'Search BIG BOSS BOT text-heavy feeds for matching news, alerts, telegram posts, conflicts, strikes, or regional watch events.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -111,7 +129,7 @@ const TOOL_DEFINITIONS = [
   },
   {
     name: 'get_feed',
-    description: 'Fetch one BIG BOSS feed directly.',
+    description: 'Fetch one BIG BOSS BOT feed directly.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -344,7 +362,7 @@ export function startBigBossMcpServer() {
                 version: SERVER_VERSION,
               },
               instructions: [
-                'BIG BOSS MCP exposes on-demand read-only intel tools.',
+                'BIG BOSS BOT MCP exposes on-demand read-only intel tools.',
                 `Default snapshot feeds: ${BIG_BOSS_MCP_DEFAULT_SNAPSHOT_FEEDS.join(', ')}`,
                 'Set BIG_BOSS_BASE_URL and BIG_BOSS_API_TOKEN before calling tools.',
               ].join(' '),

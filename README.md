@@ -1,6 +1,6 @@
-# BIG BOSS
+# BIG BOSS BOT
 
-![BIG BOSS Dashboard](./BIG-BOSS.png)
+![BIG BOSS BOT Dashboard](./BIG-BOSS.png)
 
 Real-time OSINT command center for monitoring the Middle East conflict. Aggregates open-source intelligence from 50+ sources across news, Telegram, military tracking, financial markets, and more into a single dashboard.
 
@@ -170,11 +170,35 @@ Useful scripts:
 
 ## GHCR Image
 
-GitHub publishes the app image to `ghcr.io/kitakitsune0x/bigboss`.
+GitHub publishes the app image to `ghcr.io/kitakitsune0x/bigbossbot`.
 
 - `main` updates the `latest` tag
+- each published build also gets a `YYYY.MM.DD` tag based on the build date
 - tagged releases publish matching version tags
 - Docker Compose uses `BIG_BOSS_IMAGE` and defaults to the GHCR image name above
+
+## Self-Hosting
+
+For a simple self-hosted deployment, use Docker Compose with the published GHCR image:
+
+```bash
+cp .env.example .env
+docker compose pull
+docker compose up -d --no-build
+```
+
+Before you start the stack, update `.env` with at least:
+
+- `BIG_BOSS_IMAGE=ghcr.io/kitakitsune0x/bigbossbot:YYYY.MM.DD` to pin an exact build, or leave `:latest` if you want the moving default
+- `AUTH_ENCRYPTION_KEY` set to a long random secret
+- `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD` set to the first admin account you want created
+- `APP_PORT` and `POSTGRES_PORT` adjusted if `3000` or `54329` are already taken on your host
+
+Recommended production setup:
+
+- put the app behind a reverse proxy such as Caddy, Nginx, or Traefik for HTTPS
+- keep the bundled Postgres volume mounted so data survives container restarts
+- update by changing `BIG_BOSS_IMAGE` to a newer `YYYY.MM.DD` tag, then run `docker compose pull && docker compose up -d --no-build`
 
 ## Auth Setup Notes
 
@@ -185,7 +209,7 @@ GitHub publishes the app image to `ghcr.io/kitakitsune0x/bigboss`.
 
 ## MCP Access
 
-BIG BOSS includes a local stdio MCP server for agents that need live read-only intel.
+BIG BOSS BOT includes a local stdio MCP server for agents that need live read-only intel.
 
 - Create a read-only token in `Account -> Settings -> Agent access tokens`
 - Start the web app with `npm run dev`

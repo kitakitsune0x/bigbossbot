@@ -10,6 +10,7 @@ src/generated/prisma/
 build/
 dist/
 tsconfig.tsbuildinfo
+.build-version
 
 # env files
 .env

@@ -1,8 +1,8 @@
-Install and configure BIG BOSS MCP like this:
+Install and configure BIG BOSS BOT MCP like this:
 
-1. Start the BIG BOSS app locally.
-2. Create an `Agent access token` in `Account -> Security`.
-3. Configure your MCP client to run `npm --prefix /absolute/path/to/bigboss run mcp`.
+1. Start the BIG BOSS BOT app locally.
+2. Create an `Agent access token` in `Account -> Settings`.
+3. Configure your MCP client to run `npm --prefix /absolute/path/to/bigbossbot run mcp`.
 4. Set:
    - `BIG_BOSS_BASE_URL=http://127.0.0.1:3000`
    - `BIG_BOSS_API_TOKEN=<the plaintext token>`

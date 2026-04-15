@@ -1,17 +1,17 @@
-# BIG BOSS MCP
+# BIG BOSS BOT MCP
 
-BIG BOSS ships with a local stdio MCP server so Codex, Claude Desktop, and other MCP clients can pull live read-only intel from the app on demand.
+BIG BOSS BOT ships with a local stdio MCP server so Codex, Claude Desktop, and other MCP clients can pull live read-only intel from the app on demand.
 
 ## 1. Create an agent token
 
-1. Sign in to BIG BOSS.
+1. Sign in to BIG BOSS BOT.
 2. Open `Account -> Settings`.
 3. In `Agent access tokens`, create a new token.
 4. Copy the plaintext token immediately. It is only shown once.
 
 Tokens are read-only and only work against the intel feeds. They do not grant admin or account mutation access.
 
-## 2. Start BIG BOSS
+## 2. Start BIG BOSS BOT
 
 ```bash
 npm run dev
@@ -68,7 +68,7 @@ Add a server entry to your Claude Desktop MCP config:
   "mcpServers": {
     "big-boss": {
       "command": "npm",
-      "args": ["--prefix", "/absolute/path/to/bigboss", "run", "mcp"],
+      "args": ["--prefix", "/absolute/path/to/bigbossbot", "run", "mcp"],
       "env": {
         "BIG_BOSS_BASE_URL": "http://127.0.0.1:3000",
         "BIG_BOSS_API_TOKEN": "bb_read_intel_replace_me"
@@ -87,7 +87,7 @@ Add an MCP server block to your Codex `~/.codex/config.toml`:
 ```toml
 [mcp_servers.big-boss]
 command = "npm"
-args = ["--prefix", "/absolute/path/to/bigboss", "run", "mcp"]
+args = ["--prefix", "/absolute/path/to/bigbossbot", "run", "mcp"]
 
 [mcp_servers.big-boss.env]
 BIG_BOSS_BASE_URL = "http://127.0.0.1:3000"
@@ -104,13 +104,13 @@ To install it into your user skills directory:
 
 ```bash
 mkdir -p ~/.codex/skills
-cp -R /absolute/path/to/bigboss/skills/big-boss-mcp ~/.codex/skills/
+cp -R /absolute/path/to/bigbossbot/skills/big-boss-mcp ~/.codex/skills/
 ```
 
 Once installed, Codex can use the skill to decide when to call `get_snapshot`, `search_intel`, and `get_feed`.
 
 ## Notes
 
-- The MCP server is a thin adapter over BIG BOSS HTTP APIs. The web app must already be running.
-- If a token is revoked in BIG BOSS, MCP calls immediately stop working.
+- The MCP server is a thin adapter over BIG BOSS BOT HTTP APIs. The web app must already be running.
+- If a token is revoked in BIG BOSS BOT, MCP calls immediately stop working.
 - Read-only feed routes accept either a browser session or a bearer token. Account, preference, and admin routes still require a normal session.
