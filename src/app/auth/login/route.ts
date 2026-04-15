@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { AUTH_SERVICE_UNAVAILABLE_MESSAGE } from '@/lib/auth/config';
 import { loginSchema } from '@/lib/auth/schemas';
 import { startLogin } from '@/lib/auth/service';
 
@@ -16,7 +17,10 @@ export async function POST(request: NextRequest) {
   const result = await startLogin(parsed.data.username, parsed.data.password);
 
   if (!result.ok) {
-    return NextResponse.json({ error: result.message }, { status: 400 });
+    return NextResponse.json(
+      { error: result.message },
+      { status: result.message === AUTH_SERVICE_UNAVAILABLE_MESSAGE ? 503 : 400 }
+    );
   }
 
   return NextResponse.json({

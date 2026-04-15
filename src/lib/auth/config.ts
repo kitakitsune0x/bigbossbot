@@ -7,6 +7,7 @@ export const APP_USER_AGENT = 'BIG-BOSS-BOT/1.0';
 export const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME ?? `${APP_COOKIE_PREFIX}_session`;
 export const LOGIN_CHALLENGE_COOKIE_NAME = `${APP_COOKIE_PREFIX}_login_challenge`;
 export const AUTH_REQUIRE_2FA = process.env.AUTH_REQUIRE_2FA === 'true';
+export const AUTH_SERVICE_UNAVAILABLE_MESSAGE = 'Authentication is temporarily unavailable. Please try again in a moment.';
 
 export const SESSION_TTL_MS = Number(process.env.AUTH_SESSION_DAYS ?? '30') * 24 * 60 * 60 * 1000;
 export const SESSION_ROLLING_WINDOW_MS = 6 * 60 * 60 * 1000;

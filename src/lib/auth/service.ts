@@ -4,6 +4,7 @@ import type { Prisma } from '@/generated/prisma/client';
 import {
   APP_NAME,
   AUTH_REQUIRE_2FA,
+  AUTH_SERVICE_UNAVAILABLE_MESSAGE,
   LOGIN_CHALLENGE_COOKIE_NAME,
   LOGIN_CHALLENGE_TTL_MS,
   SESSION_COOKIE_NAME,
@@ -31,7 +32,7 @@ import {
 } from '@/lib/auth/crypto';
 import { getAdminSelfProtectionError, resolveAdminManagedStatus, shouldExtendSession } from '@/lib/auth/policy';
 import { consumeRateLimit } from '@/lib/auth/rate-limit';
-import { getPrisma } from '@/lib/prisma';
+import { getPrisma, isPrismaDatabaseConnectionError } from '@/lib/prisma';
 import { cacheGet, cacheSet, cacheDelete, cacheDeletePrefix } from '@/lib/cache';
 import {
   DEFAULT_CONFLICT_MAP_PREFERENCES,
@@ -71,6 +72,14 @@ export type ApiTokenAccessContext = {
 };
 
 const API_TOKEN_SCOPE = 'read_intel' as const;
+
+function authServiceUnavailableResult() {
+  return {
+    ok: false as const,
+    message: AUTH_SERVICE_UNAVAILABLE_MESSAGE,
+    transient: true as const,
+  };
+}
 
 function createApiTokenValue() {
   return `bb_${API_TOKEN_SCOPE}_${createOpaqueToken(24)}`;
@@ -555,52 +564,60 @@ export async function registerUser(username: string, password: string) {
     };
   }
 
-  const prisma = getPrisma();
-  const existing = await prisma.user.findUnique({
-    where: { usernameCanonical: canonical },
-    select: { id: true },
-  });
+  try {
+    const prisma = getPrisma();
+    const existing = await prisma.user.findUnique({
+      where: { usernameCanonical: canonical },
+      select: { id: true },
+    });
 
-  if (existing) {
-    await auditLog('signup_failed', {
-      usernameCanonical: canonical,
-      metadata: { reason: 'username_taken' },
+    if (existing) {
+      await auditLog('signup_failed', {
+        usernameCanonical: canonical,
+        metadata: { reason: 'username_taken' },
+      });
+
+      return {
+        ok: false as const,
+        message: 'That username is already in use.',
+      };
+    }
+
+    const passwordHash = await hashPassword(password);
+    const twoFactorState = getDefaultTwoFactorState();
+    const user = await prisma.user.create({
+      data: {
+        username: username.trim(),
+        usernameCanonical: canonical,
+        passwordHash,
+        role: 'member',
+        status: twoFactorState.status,
+        totpRequired: twoFactorState.totpRequired,
+      },
+      select: {
+        id: true,
+        usernameCanonical: true,
+      },
+    });
+
+    await ensureUserPreferences(user.id);
+    await createSession(user.id);
+    await auditLog('signup', {
+      userId: user.id,
+      usernameCanonical: user.usernameCanonical,
     });
 
     return {
-      ok: false as const,
-      message: 'That username is already in use.',
+      ok: true as const,
+      nextPath: twoFactorState.nextPath,
     };
+  } catch (error) {
+    if (isPrismaDatabaseConnectionError(error)) {
+      return authServiceUnavailableResult();
+    }
+
+    throw error;
   }
-
-  const passwordHash = await hashPassword(password);
-  const twoFactorState = getDefaultTwoFactorState();
-  const user = await prisma.user.create({
-    data: {
-      username: username.trim(),
-      usernameCanonical: canonical,
-      passwordHash,
-      role: 'member',
-      status: twoFactorState.status,
-      totpRequired: twoFactorState.totpRequired,
-    },
-    select: {
-      id: true,
-      usernameCanonical: true,
-    },
-  });
-
-  await ensureUserPreferences(user.id);
-  await createSession(user.id);
-  await auditLog('signup', {
-    userId: user.id,
-    usernameCanonical: user.usernameCanonical,
-  });
-
-  return {
-    ok: true as const,
-    nextPath: twoFactorState.nextPath,
-  };
 }
 
 export async function startLogin(username: string, password: string) {
@@ -615,91 +632,99 @@ export async function startLogin(username: string, password: string) {
     };
   }
 
-  const prisma = getPrisma();
-  const user = await prisma.user.findUnique({
-    where: { usernameCanonical: canonical },
-    select: {
-      id: true,
-      username: true,
-      usernameCanonical: true,
-      passwordHash: true,
-      status: true,
-      totpRequired: true,
-      totpCredential: {
-        select: {
-          verifiedAt: true,
+  try {
+    const prisma = getPrisma();
+    const user = await prisma.user.findUnique({
+      where: { usernameCanonical: canonical },
+      select: {
+        id: true,
+        username: true,
+        usernameCanonical: true,
+        passwordHash: true,
+        status: true,
+        totpRequired: true,
+        totpCredential: {
+          select: {
+            verifiedAt: true,
+          },
         },
       },
-    },
-  });
-
-  if (!user || !(await verifyPasswordHash(user.passwordHash, password))) {
-    await auditLog('login_failed', {
-      usernameCanonical: canonical,
-      metadata: { reason: 'invalid_credentials' },
     });
 
-    return {
-      ok: false as const,
-      message: 'Invalid username or password.',
-    };
-  }
+    if (!user || !(await verifyPasswordHash(user.passwordHash, password))) {
+      await auditLog('login_failed', {
+        usernameCanonical: canonical,
+        metadata: { reason: 'invalid_credentials' },
+      });
 
-  if (user.status === 'disabled') {
-    await auditLog('login_failed', {
-      userId: user.id,
-      usernameCanonical: user.usernameCanonical,
-      metadata: { reason: 'disabled' },
-    });
+      return {
+        ok: false as const,
+        message: 'Invalid username or password.',
+      };
+    }
 
-    return {
-      ok: false as const,
-      message: 'This account has been disabled.',
-    };
-  }
+    if (user.status === 'disabled') {
+      await auditLog('login_failed', {
+        userId: user.id,
+        usernameCanonical: user.usernameCanonical,
+        metadata: { reason: 'disabled' },
+      });
 
-  const normalizedUser = await normalizePendingUserIfTwoFactorOptional(user);
+      return {
+        ok: false as const,
+        message: 'This account has been disabled.',
+      };
+    }
 
-  if (normalizedUser.status === 'pending_2fa_setup') {
-    await createSession(normalizedUser.id);
-    await auditLog('login_pending_setup', {
+    const normalizedUser = await normalizePendingUserIfTwoFactorOptional(user);
+
+    if (normalizedUser.status === 'pending_2fa_setup') {
+      await createSession(normalizedUser.id);
+      await auditLog('login_pending_setup', {
+        userId: normalizedUser.id,
+        usernameCanonical: normalizedUser.usernameCanonical,
+      });
+
+      return {
+        ok: true as const,
+        nextPath: '/setup-2fa',
+        pendingSetup: true,
+      };
+    }
+
+    if (!normalizedUser.totpRequired) {
+      await createSession(normalizedUser.id);
+      await prisma.user.update({
+        where: { id: normalizedUser.id },
+        data: { lastLoginAt: new Date() },
+      });
+      await auditLog('login_success', {
+        userId: normalizedUser.id,
+        usernameCanonical: normalizedUser.usernameCanonical,
+      });
+
+      return {
+        ok: true as const,
+        nextPath: '/dashboard',
+      };
+    }
+
+    await setLoginChallengeCookie({
       userId: normalizedUser.id,
       usernameCanonical: normalizedUser.usernameCanonical,
     });
 
     return {
       ok: true as const,
-      nextPath: '/setup-2fa',
-      pendingSetup: true,
+      requiresTwoFactor: true,
     };
+  } catch (error) {
+    if (isPrismaDatabaseConnectionError(error)) {
+      return authServiceUnavailableResult();
+    }
+
+    throw error;
   }
-
-  if (!normalizedUser.totpRequired) {
-    await createSession(normalizedUser.id);
-    await prisma.user.update({
-      where: { id: normalizedUser.id },
-      data: { lastLoginAt: new Date() },
-    });
-    await auditLog('login_success', {
-      userId: normalizedUser.id,
-      usernameCanonical: normalizedUser.usernameCanonical,
-    });
-
-    return {
-      ok: true as const,
-      nextPath: '/dashboard',
-    };
-  }
-
-  await setLoginChallengeCookie({
-    userId: normalizedUser.id,
-    usernameCanonical: normalizedUser.usernameCanonical,
-  });
-
-  return {
-    ok: true as const,
-    requiresTwoFactor: true,
-  };
 }
 
 export async function verifyLoginSecondFactor(input: { code?: string; recoveryCode?: string }) {
@@ -726,83 +751,91 @@ export async function verifyLoginSecondFactor(input: { code?: string; recoveryCo
     };
   }
 
-  const prisma = getPrisma();
-  const user = await prisma.user.findUnique({
-    where: { id: challenge.userId },
-    include: {
-      totpCredential: true,
-      recoveryCodes: true,
-    },
-  });
+  try {
+    const prisma = getPrisma();
+    const user = await prisma.user.findUnique({
+      where: { id: challenge.userId },
+      include: {
+        totpCredential: true,
+        recoveryCodes: true,
+      },
+    });
 
-  if (!user || user.status !== 'active' || !user.totpCredential?.verifiedAt) {
-    await clearLoginChallenge();
-    return {
-      ok: false as const,
-      message: 'This account cannot complete two-factor sign-in right now.',
-    };
-  }
+    if (!user || user.status !== 'active' || !user.totpCredential?.verifiedAt) {
+      await clearLoginChallenge();
+      return {
+        ok: false as const,
+        message: 'This account cannot complete two-factor sign-in right now.',
+      };
+    }
 
-  let verified = false;
+    let verified = false;
 
-  if (input.code) {
-    const secretBase32 = tryDecryptTotpSecret(user.totpCredential.secretCiphertext);
+    if (input.code) {
+      const secretBase32 = tryDecryptTotpSecret(user.totpCredential.secretCiphertext);
 
-    if (!secretBase32) {
-      await auditLog('login_2fa_secret_unreadable', {
+      if (!secretBase32) {
+        await auditLog('login_2fa_secret_unreadable', {
+          userId: user.id,
+          usernameCanonical: user.usernameCanonical,
+        });
+
+        return {
+          ok: false as const,
+          message: 'Your two-factor secret could not be read. Please ask an admin to reset 2FA for this account.',
+        };
+      }
+
+      verified = verifyTotpCode(secretBase32, user.username, input.code);
+    } else if (input.recoveryCode) {
+      const normalized = normalizeRecoveryCode(input.recoveryCode);
+      const codeHash = hashRecoveryCode(normalized);
+
+      const match = user.recoveryCodes.find((code) => !code.usedAt && code.codeHash === codeHash);
+
+      if (match) {
+        await prisma.recoveryCode.update({
+          where: { id: match.id },
+          data: { usedAt: new Date() },
+        });
+        verified = true;
+      }
+    }
+
+    if (!verified) {
+      await auditLog('login_2fa_failed', {
         userId: user.id,
         usernameCanonical: user.usernameCanonical,
       });
 
       return {
         ok: false as const,
-        message: 'Your two-factor secret could not be read. Please ask an admin to reset 2FA for this account.',
+        message: 'The code was not valid. Please try again.',
       };
     }
 
-    verified = verifyTotpCode(secretBase32, user.username, input.code);
-  } else if (input.recoveryCode) {
-    const normalized = normalizeRecoveryCode(input.recoveryCode);
-    const codeHash = hashRecoveryCode(normalized);
-
-    const match = user.recoveryCodes.find((code) => !code.usedAt && code.codeHash === codeHash);
-
-    if (match) {
-      await prisma.recoveryCode.update({
-        where: { id: match.id },
-        data: { usedAt: new Date() },
-      });
-      verified = true;
-    }
-  }
-
-  if (!verified) {
-    await auditLog('login_2fa_failed', {
+    await clearLoginChallenge();
+    await createSession(user.id);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+    await auditLog('login_success', {
       userId: user.id,
       usernameCanonical: user.usernameCanonical,
     });
 
     return {
-      ok: false as const,
-      message: 'The code was not valid. Please try again.',
+      ok: true as const,
+      nextPath: '/dashboard',
     };
+  } catch (error) {
+    if (isPrismaDatabaseConnectionError(error)) {
+      return authServiceUnavailableResult();
+    }
+
+    throw error;
   }
-
-  await clearLoginChallenge();
-  await createSession(user.id);
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { lastLoginAt: new Date() },
-  });
-  await auditLog('login_success', {
-    userId: user.id,
-    usernameCanonical: user.usernameCanonical,
-  });
-
-  return {
-    ok: true as const,
-    nextPath: '/dashboard',
-  };
 }
 
 export async function getOrCreateTotpSetup(userId: string) {
@@ -862,74 +895,82 @@ export async function getOrCreateTotpSetup(userId: string) {
 }
 
 export async function completeTotpSetup(userId: string, code: string) {
-  const prisma = getPrisma();
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: { totpCredential: true },
-  });
+  try {
+    const prisma = getPrisma();
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { totpCredential: true },
+    });
 
-  if (!user?.totpCredential) {
+    if (!user?.totpCredential) {
+      return {
+        ok: false as const,
+        message: 'No pending authenticator setup was found for this account.',
+      };
+    }
+
+    const secretBase32 = tryDecryptTotpSecret(user.totpCredential.secretCiphertext);
+
+    if (!secretBase32) {
+      return {
+        ok: false as const,
+        message: 'The stored authenticator secret could not be read. Restart setup and try again.',
+      };
+    }
+
+    const verified = verifyTotpCode(secretBase32, user.username, code);
+
+    if (!verified) {
+      return {
+        ok: false as const,
+        message: 'The authenticator code was not valid.',
+      };
+    }
+
+    const recoveryCodes = generateRecoveryCodes();
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: {
+          status: 'active',
+          totpRequired: true,
+        },
+      }),
+      prisma.totpCredential.update({
+        where: { userId: user.id },
+        data: {
+          verifiedAt: new Date(),
+          label: user.username,
+        },
+      }),
+      prisma.recoveryCode.deleteMany({
+        where: { userId: user.id },
+      }),
+      prisma.recoveryCode.createMany({
+        data: recoveryCodes.map((recoveryCode) => ({
+          userId: user.id,
+          codeHash: hashRecoveryCode(recoveryCode),
+        })),
+      }),
+    ]);
+
+    await auditLog('totp_setup_completed', {
+      userId: user.id,
+      usernameCanonical: user.usernameCanonical,
+    });
+
     return {
-      ok: false as const,
-      message: 'No pending authenticator setup was found for this account.',
+      ok: true as const,
+      recoveryCodes,
     };
+  } catch (error) {
+    if (isPrismaDatabaseConnectionError(error)) {
+      return authServiceUnavailableResult();
+    }
+
+    throw error;
   }
-
-  const secretBase32 = tryDecryptTotpSecret(user.totpCredential.secretCiphertext);
-
-  if (!secretBase32) {
-    return {
-      ok: false as const,
-      message: 'The stored authenticator secret could not be read. Restart setup and try again.',
-    };
-  }
-
-  const verified = verifyTotpCode(secretBase32, user.username, code);
-
-  if (!verified) {
-    return {
-      ok: false as const,
-      message: 'The authenticator code was not valid.',
-    };
-  }
-
-  const recoveryCodes = generateRecoveryCodes();
-
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: user.id },
-      data: {
-        status: 'active',
-        totpRequired: true,
-      },
-    }),
-    prisma.totpCredential.update({
-      where: { userId: user.id },
-      data: {
-        verifiedAt: new Date(),
-        label: user.username,
-      },
-    }),
-    prisma.recoveryCode.deleteMany({
-      where: { userId: user.id },
-    }),
-    prisma.recoveryCode.createMany({
-      data: recoveryCodes.map((recoveryCode) => ({
-        userId: user.id,
-        codeHash: hashRecoveryCode(recoveryCode),
-      })),
-    }),
-  ]);
-
-  await auditLog('totp_setup_completed', {
-    userId: user.id,
-    usernameCanonical: user.usernameCanonical,
-  });
-
-  return {
-    ok: true as const,
-    recoveryCodes,
-  };
 }
 
 export async function changePassword(userId: string, currentPassword: string, newPassword: string, keepSessionId?: string) {

@@ -4,10 +4,17 @@ import { createContext, useContext, useMemo, useState, useCallback } from 'react
 import type { ConflictMapPreferences, UserPreferences } from '@/types/auth';
 import { DASHBOARD_PANEL_IDS, type DashboardPanelId } from '@/lib/auth/config';
 import type { TheaterId } from '@/lib/theater';
+import type { UserRole } from '@/types/auth';
 
 type PreferencesContextValue = {
   preferences: UserPreferences;
   saving: boolean;
+  viewer: {
+    isAuthenticated: boolean;
+    username: string | null;
+    role: UserRole | null;
+  };
+  persistsPreferences: boolean;
   isPanelHidden: (panelId: DashboardPanelId) => boolean;
   togglePanel: (panelId: DashboardPanelId) => Promise<void>;
   setAlertSoundEnabled: (value: boolean) => Promise<void>;
@@ -51,17 +58,28 @@ function getResolvedOrder(prefs: UserPreferences): DashboardPanelId[] {
 
 export function PreferencesProvider({
   initialPreferences,
+  viewer,
   children,
 }: {
   initialPreferences: UserPreferences;
+  viewer: {
+    username: string;
+    role: UserRole;
+  } | null;
   children: React.ReactNode;
 }) {
   const [preferences, setPreferences] = useState(initialPreferences);
   const [saving, setSaving] = useState(false);
+  const persistsPreferences = Boolean(viewer);
 
   const persist = useCallback(async (next: UserPreferences) => {
-    const previous = preferences;
     setPreferences(next);
+
+    if (!persistsPreferences) {
+      return;
+    }
+
+    const previous = preferences;
     setSaving(true);
 
     try {
@@ -72,7 +90,7 @@ export function PreferencesProvider({
     } finally {
       setSaving(false);
     }
-  }, [preferences]);
+  }, [persistsPreferences, preferences]);
 
   const value = useMemo<PreferencesContextValue>(() => {
     const panelOrder = getResolvedOrder(preferences);
@@ -81,6 +99,12 @@ export function PreferencesProvider({
     return {
       preferences,
       saving,
+      viewer: {
+        isAuthenticated: Boolean(viewer),
+        username: viewer?.username ?? null,
+        role: viewer?.role ?? null,
+      },
+      persistsPreferences,
       isPanelHidden: (panelId) => preferences.hiddenPanels.includes(panelId),
       togglePanel: async (panelId) => {
         const hiddenPanels = preferences.hiddenPanels.includes(panelId)
@@ -143,7 +167,7 @@ export function PreferencesProvider({
       },
       visiblePanels,
     };
-  }, [preferences, saving, persist]);
+  }, [persist, persistsPreferences, preferences, saving, viewer]);
 
   return (
     <PreferencesContext.Provider value={value}>

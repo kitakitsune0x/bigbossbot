@@ -224,6 +224,7 @@ cp .env.production.example .env.production
 - `APP_DOMAIN` to the DNS hostname pointing at your VM
 - `BIG_BOSS_IMAGE=ghcr.io/kitakitsune0x/bigbossbot:YYYY.MM.DD` to pin an exact build, or leave `:latest` if you want the moving default
 - `AUTH_ENCRYPTION_KEY` to a long random secret
+- `AUTH_REQUIRE_2FA=false` if you want authenticator setup to stay optional on signup, or `true` if you want to enforce it globally
 - `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD` to the first admin account you want created
 - `POSTGRES_PASSWORD` and `DATABASE_URL` for the bundled Postgres service
 
@@ -249,7 +250,7 @@ Recommended production setup:
 - `npm run db:up` starts the Docker Postgres service defined in [docker-compose.yml](./docker-compose.yml)
 - `npm run db:migrate` applies the checked-in Prisma migration to the running database
 - `npm run bootstrap:admin` creates the first admin using `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD`
-- `AUTH_REQUIRE_2FA=true` forces every account through authenticator setup before `/dashboard`; the default is optional 2FA
+- `AUTH_REQUIRE_2FA=true` forces every account through authenticator setup before `/dashboard`; the shipped default is optional 2FA
 - `AUTH_ENCRYPTION_KEY` should be a long random secret anywhere outside disposable local development
 
 ## MCP Access

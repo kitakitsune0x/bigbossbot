@@ -8,10 +8,13 @@ import { PreferencesProvider } from '@/components/dashboard/PreferencesProvider'
 import CommandPalette from '@/components/dashboard/CommandPalette';
 import ShortcutsHelp from '@/components/dashboard/ShortcutsHelp';
 import type { UserPreferences } from '@/types/auth';
+import type { UserRole } from '@/types/auth';
 
 type DashboardShellProps = {
-  username: string;
-  role: 'admin' | 'member';
+  viewer: {
+    username: string;
+    role: UserRole;
+  } | null;
   initialPreferences: UserPreferences;
   children: React.ReactNode;
 };
@@ -28,12 +31,12 @@ function SidebarToggleListener({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export default function DashboardShell({ username, role, initialPreferences, children }: DashboardShellProps) {
+export default function DashboardShell({ viewer, initialPreferences, children }: DashboardShellProps) {
   return (
-    <PreferencesProvider initialPreferences={initialPreferences}>
+    <PreferencesProvider initialPreferences={initialPreferences} viewer={viewer}>
       <SidebarProvider>
         <SidebarToggleListener>
-          <AppSidebar username={username} role={role} />
+          <AppSidebar />
           <SidebarInset>
             <DashboardHeader />
             <main className="flex-1 overflow-hidden">

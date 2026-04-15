@@ -2,35 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
-const SHORTCUT_GROUPS = [
-  {
-    label: 'General',
-    shortcuts: [
-      { keys: ['\u2318', 'K'], description: 'Open command palette' },
-      { keys: ['\u2318', 'B'], description: 'Toggle sidebar' },
-      { keys: ['\u2318', '/'], description: 'Show keyboard shortcuts' },
-      { keys: ['Esc'], description: 'Close dialogs' },
-    ],
-  },
-  {
-    label: 'Navigation',
-    shortcuts: [
-      { keys: ['G', 'D'], description: 'Go to Dashboard' },
-      { keys: ['G', 'S'], description: 'Go to Settings' },
-      { keys: ['G', 'U'], description: 'Go to User Management' },
-    ],
-  },
-  {
-    label: 'Dashboard',
-    shortcuts: [
-      { keys: ['1'], description: 'Jump to 1st panel' },
-      { keys: ['2'], description: 'Jump to 2nd panel' },
-      { keys: ['3'], description: 'Jump to 3rd panel' },
-      { keys: ['0'], description: 'Jump to 10th panel' },
-    ],
-  },
-];
+import { useDashboardPreferences } from '@/components/dashboard/PreferencesProvider';
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
@@ -42,6 +14,36 @@ function Kbd({ children }: { children: React.ReactNode }) {
 
 export default function ShortcutsHelp() {
   const [open, setOpen] = useState(false);
+  const { viewer } = useDashboardPreferences();
+
+  const shortcutGroups = [
+    {
+      label: 'General',
+      shortcuts: [
+        { keys: ['\u2318', 'K'], description: 'Open command palette' },
+        { keys: ['\u2318', 'B'], description: 'Toggle sidebar' },
+        { keys: ['\u2318', '/'], description: 'Show keyboard shortcuts' },
+        { keys: ['Esc'], description: 'Close dialogs' },
+      ],
+    },
+    {
+      label: 'Navigation',
+      shortcuts: [
+        { keys: ['G', 'D'], description: 'Go to Dashboard' },
+        ...(viewer.isAuthenticated ? [{ keys: ['G', 'S'], description: 'Go to Settings' }] : []),
+        ...(viewer.role === 'admin' ? [{ keys: ['G', 'U'], description: 'Go to User Management' }] : []),
+      ],
+    },
+    {
+      label: 'Dashboard',
+      shortcuts: [
+        { keys: ['1'], description: 'Jump to 1st panel' },
+        { keys: ['2'], description: 'Jump to 2nd panel' },
+        { keys: ['3'], description: 'Jump to 3rd panel' },
+        { keys: ['0'], description: 'Jump to 10th panel' },
+      ],
+    },
+  ];
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -72,7 +74,7 @@ export default function ShortcutsHelp() {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {SHORTCUT_GROUPS.map((group) => (
+          {shortcutGroups.map((group) => (
             <div key={group.label}>
               <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                 {group.label}

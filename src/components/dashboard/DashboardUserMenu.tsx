@@ -13,6 +13,8 @@ export default function DashboardUserMenu() {
   const {
     preferences,
     saving,
+    viewer,
+    persistsPreferences,
     isPanelHidden,
     togglePanel,
     setAlertSoundEnabled,
@@ -51,6 +53,11 @@ export default function DashboardUserMenu() {
             </div>
 
             <div className="border-b border-border px-3 py-2.5 space-y-2.5">
+              {!viewer.isAuthenticated && (
+                <div className="rounded border border-border bg-muted/30 px-2.5 py-2 text-[11px] text-muted-foreground">
+                  Guest mode is active. Preference changes stay in this browser tab and are not saved to an account.
+                </div>
+              )}
               <div className="space-y-1.5">
                 <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Theater</p>
                 <div className="grid grid-cols-2 gap-1">
@@ -58,8 +65,8 @@ export default function DashboardUserMenu() {
                     <button
                       key={theaterId}
                       onClick={() => void setTheater(theaterId)}
-                      disabled={saving}
-                      className={`rounded border px-2 py-1.5 text-[11px] transition-colors ${
+                  disabled={saving}
+                  className={`rounded border px-2 py-1.5 text-[11px] transition-colors ${
                         preferences.theater === theaterId
                           ? 'border-primary bg-primary/10 text-foreground'
                           : 'border-border text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -94,7 +101,9 @@ export default function DashboardUserMenu() {
             <div className="px-3 py-2">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">Panels</p>
-                <p className="text-[9px] text-muted-foreground">{visiblePanels.length} visible</p>
+                <p className="text-[9px] text-muted-foreground">
+                  {visiblePanels.length} visible{persistsPreferences ? '' : ' · unsaved'}
+                </p>
               </div>
               <div className="space-y-0.5 max-h-56 overflow-y-auto">
                 {DASHBOARD_PANEL_IDS.map((panelId) => {

@@ -3,10 +3,10 @@ import { redirect } from 'next/navigation';
 import LoginForm from '@/components/auth/LoginForm';
 import BrandLogo from '@/components/layout/BrandLogo';
 import { APP_NAME, AUTH_REQUIRE_2FA } from '@/lib/auth/config';
-import { getCurrentSessionContext } from '@/lib/auth/service';
+import { getOptionalPageSession } from '@/lib/auth/session';
 
 export default async function LoginPage() {
-  const session = await getCurrentSessionContext();
+  const session = await getOptionalPageSession();
 
   if (session?.status === 'active') {
     redirect('/dashboard');

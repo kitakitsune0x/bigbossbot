@@ -41,10 +41,13 @@ Edit `.env.production` and replace every placeholder value before starting anyth
 - `POSTGRES_PASSWORD`
 - `DATABASE_URL`
 - `AUTH_ENCRYPTION_KEY`
+- `AUTH_REQUIRE_2FA` if you want to override the default optional signup flow
 - `BOOTSTRAP_ADMIN_USERNAME`
 - `BOOTSTRAP_ADMIN_PASSWORD`
 
 The container refuses to start if `AUTH_ENCRYPTION_KEY` or `BOOTSTRAP_ADMIN_PASSWORD` still use the example placeholder values.
+
+`AUTH_REQUIRE_2FA` defaults to `false` in the shipped production files, so new signups can reach the dashboard without mandatory authenticator setup. Set it to `true` later if you want to enforce 2FA for every account.
 
 If you want automatic deploys on every push, leave `BIG_BOSS_IMAGE` on `:latest`.
 

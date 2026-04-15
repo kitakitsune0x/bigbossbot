@@ -7,7 +7,7 @@ import { useDashboardPreferences } from '@/components/dashboard/PreferencesProvi
 
 export default function KeyboardHandler() {
   const router = useRouter();
-  const { visiblePanels } = useDashboardPreferences();
+  const { visiblePanels, viewer } = useDashboardPreferences();
   const pendingG = useRef(false);
   const gTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -50,15 +50,15 @@ export default function KeyboardHandler() {
           pendingG.current = false;
           clearTimeout(gTimer.current);
           if (e.key === 'd') { router.push('/dashboard'); return; }
-          if (e.key === 's') { router.push('/account/settings'); return; }
-          if (e.key === 'u') { router.push('/admin/users'); return; }
+          if (e.key === 's' && viewer.isAuthenticated) { router.push('/account/settings'); return; }
+          if (e.key === 'u' && viewer.role === 'admin') { router.push('/admin/users'); return; }
         }
       }
     };
 
     document.addEventListener('keydown', handle);
     return () => document.removeEventListener('keydown', handle);
-  }, [router, visiblePanels]);
+  }, [router, viewer, visiblePanels]);
 
   return null;
 }

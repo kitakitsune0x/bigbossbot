@@ -8,6 +8,8 @@ import {
   Settings2,
   Users,
   LogOut,
+  LogIn,
+  UserPlus,
   Newspaper,
   Map,
   Siren,
@@ -50,11 +52,6 @@ import BrandLogo from '@/components/layout/BrandLogo';
 import { primeDataFeed } from '@/lib/hooks';
 import { APP_NAME, type DashboardPanelId } from '@/lib/auth/config';
 import { THEATER_META } from '@/lib/theater';
-
-type AppSidebarProps = {
-  username: string;
-  role: 'admin' | 'member';
-};
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -168,13 +165,18 @@ function PanelGroup({
   );
 }
 
-export default function AppSidebar({ username, role }: AppSidebarProps) {
+export default function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
-  const { preferences } = useDashboardPreferences();
+  const {
+    preferences,
+    viewer,
+  } = useDashboardPreferences();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const theaterMeta = THEATER_META[preferences.theater];
+  const isAuthenticated = viewer.isAuthenticated;
+  const role = viewer.role;
 
   useEffect(() => {
     setPendingHref(null);
@@ -182,8 +184,9 @@ export default function AppSidebar({ username, role }: AppSidebarProps) {
 
   useEffect(() => {
     const allRoutes = [
-      ...NAV_ITEMS.map((item) => item.href),
+      ...NAV_ITEMS.filter((item) => isAuthenticated || item.href === '/dashboard').map((item) => item.href),
       ...(role === 'admin' ? ADMIN_ITEMS.map((item) => item.href) : []),
+      ...(!isAuthenticated ? ['/login', '/signup'] : []),
       ...INTEL_ITEMS.map((item) => `/${item.panelId}`),
       ...MARKET_ITEMS.map((item) => `/${item.panelId}`),
       ...MILITARY_ITEMS.map((item) => `/${item.panelId}`),
@@ -196,7 +199,7 @@ export default function AppSidebar({ username, role }: AppSidebarProps) {
     }, 300);
 
     return () => window.clearTimeout(warmRoutesTimeout);
-  }, [pathname, role, router]);
+  }, [isAuthenticated, pathname, role, router]);
 
   function warmRoute(href: string) {
     router.prefetch(href);
@@ -289,7 +292,7 @@ export default function AppSidebar({ username, role }: AppSidebarProps) {
           <SidebarGroupLabel>Platform</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => (
+              {NAV_ITEMS.filter((item) => isAuthenticated || item.href === '/dashboard').map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarNavLink
                     href={item.href}
@@ -382,27 +385,67 @@ export default function AppSidebar({ username, role }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton tooltip={username}>
-              <div className="flex aspect-square size-6 items-center justify-center rounded bg-sidebar-accent text-[9px] font-semibold">
-                {username.slice(0, 2).toUpperCase()}
-              </div>
-              <div className="grid flex-1 text-left leading-tight">
-                <span className="truncate text-sm font-medium">{username}</span>
-                <span className="truncate text-xs text-muted-foreground capitalize">{role}</span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <form action={logoutAction}>
-              <SidebarMenuButton type="submit" tooltip="Log out">
-                <LogOut />
-                <span>Log out</span>
-              </SidebarMenuButton>
-            </form>
-          </SidebarMenuItem>
+      <SidebarFooter className="gap-3 px-3 py-3">
+        <SidebarMenu className="gap-2">
+          {isAuthenticated ? (
+            <>
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip={viewer.username ?? 'User'} className="h-auto gap-3 px-3 py-2.5">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-accent text-[10px] font-semibold">
+                    {(viewer.username ?? 'GU').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="grid flex-1 text-left leading-snug">
+                    <span className="truncate text-sm font-medium">{viewer.username}</span>
+                    <span className="truncate pt-0.5 text-xs text-muted-foreground capitalize">{role}</span>
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <form action={logoutAction}>
+                  <SidebarMenuButton type="submit" tooltip="Log out" className="h-10 gap-3 px-3">
+                    <LogOut />
+                    <span>Log out</span>
+                  </SidebarMenuButton>
+                </form>
+              </SidebarMenuItem>
+            </>
+          ) : (
+            <>
+              <SidebarMenuItem>
+                <SidebarMenuButton tooltip="Guest mode" className="h-auto gap-3 px-3 py-2.5">
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-sidebar-accent text-[10px] font-semibold">
+                    GS
+                  </div>
+                  <div className="grid flex-1 text-left leading-snug">
+                    <span className="truncate text-sm font-medium">Guest mode</span>
+                    <span className="truncate pt-0.5 text-xs text-muted-foreground">Prefs reset on refresh</span>
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarNavLink
+                  href="/login"
+                  icon={LogIn}
+                  isActive={pathname === '/login'}
+                  isPending={pendingHref === '/login'}
+                  label="Sign in"
+                  onClick={(event) => navigateToRoute('/login', event)}
+                  onWarmRoute={() => warmRoute('/login')}
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarNavLink
+                  href="/signup"
+                  icon={UserPlus}
+                  isActive={pathname === '/signup'}
+                  isPending={pendingHref === '/signup'}
+                  label="Create account"
+                  onClick={(event) => navigateToRoute('/signup', event)}
+                  onWarmRoute={() => warmRoute('/signup')}
+                />
+              </SidebarMenuItem>
+            </>
+          )}
         </SidebarMenu>
       </SidebarFooter>
 

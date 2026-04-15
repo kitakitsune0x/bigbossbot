@@ -6,6 +6,8 @@ import {
   LayoutDashboard,
   Settings2,
   Users,
+  LogIn,
+  UserPlus,
   Newspaper,
   Map,
   Siren,
@@ -81,7 +83,7 @@ export default function CommandPalette() {
   const router = useRouter();
   const pathname = usePathname();
   const { isMobile } = useSidebar();
-  const { preferences } = useDashboardPreferences();
+  const { preferences, viewer } = useDashboardPreferences();
   const panelOps = useContext(PanelOpsContext);
 
   const visiblePanels = panelOps?.visiblePanels ?? [...DASHBOARD_PANEL_IDS];
@@ -122,16 +124,31 @@ export default function CommandPalette() {
             <span>Dashboard</span>
             <CommandShortcut>G D</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => { setOpen(false); router.push('/account/settings'); }}>
-            <Settings2 />
-            <span>Settings</span>
-            <CommandShortcut>G S</CommandShortcut>
-          </CommandItem>
-          <CommandItem onSelect={() => { setOpen(false); router.push('/admin/users'); }}>
-            <Users />
-            <span>User Management</span>
-            <CommandShortcut>G U</CommandShortcut>
-          </CommandItem>
+          {viewer.isAuthenticated ? (
+            <CommandItem onSelect={() => { setOpen(false); router.push('/account/settings'); }}>
+              <Settings2 />
+              <span>Settings</span>
+              <CommandShortcut>G S</CommandShortcut>
+            </CommandItem>
+          ) : (
+            <>
+              <CommandItem onSelect={() => { setOpen(false); router.push('/login'); }}>
+                <LogIn />
+                <span>Sign in</span>
+              </CommandItem>
+              <CommandItem onSelect={() => { setOpen(false); router.push('/signup'); }}>
+                <UserPlus />
+                <span>Create account</span>
+              </CommandItem>
+            </>
+          )}
+          {viewer.role === 'admin' && (
+            <CommandItem onSelect={() => { setOpen(false); router.push('/admin/users'); }}>
+              <Users />
+              <span>User Management</span>
+              <CommandShortcut>G U</CommandShortcut>
+            </CommandItem>
+          )}
         </CommandGroup>
 
         <CommandSeparator />

@@ -1,5 +1,5 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@/generated/prisma/client';
+import { Prisma, PrismaClient } from '@/generated/prisma/client';
 
 type GlobalPrisma = typeof globalThis & {
   __bigBossPrisma?: PrismaClient;
@@ -29,4 +29,16 @@ export function getPrisma() {
   }
 
   return globalForPrisma.__bigBossPrisma;
+}
+
+export function isPrismaDatabaseConnectionError(error: unknown) {
+  if (error instanceof Prisma.PrismaClientInitializationError) {
+    return true;
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ['P1001', 'P1002', 'P1017'].includes(error.code);
+  }
+
+  return error instanceof Error && /can't reach database server|connection refused|econnrefused/i.test(error.message);
 }
