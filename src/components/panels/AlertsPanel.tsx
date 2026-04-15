@@ -41,7 +41,7 @@ export default function AlertsPanel() {
     if (data.status === 'ACTIVE' && prevStatus.current === 'CLEAR' && soundEnabled && hasInteracted) {
       playAlertSound('urgent');
       if (desktopNotificationsEnabled && Notification.permission === 'granted') {
-        new Notification(`${APP_NAME} ALERT`, { body: `${data.activeCount} active alert(s)`, icon: '/favicon.ico', tag: `${APP_SLUG}-alert` });
+        new Notification(`${APP_NAME} ALERT`, { body: `${data.activeCount} active alert(s)`, icon: '/bigbosslogo.png', tag: `${APP_SLUG}-alert` });
       }
     }
     prevStatus.current = data.status;

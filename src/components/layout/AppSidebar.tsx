@@ -45,8 +45,9 @@ import {
   SidebarSeparator,
   useSidebar,
 } from '@/components/ui/sidebar';
+import BrandLogo from '@/components/layout/BrandLogo';
 import { primeDataFeed } from '@/lib/hooks';
-import { APP_MONOGRAM, APP_NAME, type DashboardPanelId } from '@/lib/auth/config';
+import { APP_NAME, type DashboardPanelId } from '@/lib/auth/config';
 
 type AppSidebarProps = {
   username: string;
@@ -243,9 +244,7 @@ export default function AppSidebar({ username, role }: AppSidebarProps) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-[10px] font-bold">
-                  {APP_MONOGRAM}
-                </div>
+                <BrandLogo className="size-8 rounded-lg" />
                 <div className="grid flex-1 text-left leading-tight">
                   <span className="truncate text-sm font-semibold tracking-wider">{APP_NAME}</span>
                   <span className="truncate text-xs text-muted-foreground">Command Center</span>

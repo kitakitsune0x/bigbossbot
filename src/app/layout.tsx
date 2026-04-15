@@ -8,6 +8,11 @@ import { APP_NAME } from "@/lib/auth/config";
 export const metadata: Metadata = {
   title: `${APP_NAME} // OSINT Command Center`,
   description: "Real-time geopolitical intelligence monitoring dashboard",
+  icons: {
+    icon: "/bigbosslogo.png",
+    shortcut: "/bigbosslogo.png",
+    apple: "/bigbosslogo.png",
+  },
 };
 
 export default function RootLayout({

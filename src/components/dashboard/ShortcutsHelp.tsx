@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const SHORTCUT_GROUPS = [
   {
@@ -67,6 +67,9 @@ export default function ShortcutsHelp() {
           <DialogTitle className="text-sm font-semibold uppercase tracking-wider">
             Keyboard Shortcuts
           </DialogTitle>
+          <DialogDescription className="text-xs">
+            Review available navigation and dashboard shortcuts.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           {SHORTCUT_GROUPS.map((group) => (

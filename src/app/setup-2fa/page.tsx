@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import SetupTwoFactorForm from '@/components/auth/SetupTwoFactorForm';
-import { APP_MONOGRAM, APP_NAME } from '@/lib/auth/config';
+import BrandLogo from '@/components/layout/BrandLogo';
+import { APP_NAME } from '@/lib/auth/config';
 import { requirePageSession } from '@/lib/auth/session';
 import { getOrCreateTotpSetup } from '@/lib/auth/service';
 
@@ -22,9 +23,7 @@ export default async function SetupTwoFactorPage() {
       <div className="w-full max-w-md space-y-6">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <div className="h-6 w-6 rounded bg-primary flex items-center justify-center text-[10px] font-bold text-primary-foreground">
-              {APP_MONOGRAM}
-            </div>
+            <BrandLogo className="h-6 w-6 rounded-md" priority />
             <span className="text-sm font-semibold tracking-wider">{APP_NAME}</span>
           </div>
           <h1 className="text-lg font-semibold mt-4">Two-factor setup</h1>
