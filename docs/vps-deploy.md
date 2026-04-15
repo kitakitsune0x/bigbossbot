@@ -3,13 +3,13 @@
 This deployment path is designed for a public GitHub repository with private runtime secrets:
 
 - GitHub Actions builds and pushes the app image to GHCR when you push to `main`
-- your VPS pulls and restarts the app automatically with Watchtower
-- Cloudflare Tunnel publishes the app without exposing the VPS origin IP
+- Caddy terminates HTTPS on the VM and reverse-proxies to the app over the internal Docker network
+- Watchtower can optionally pull and restart the app automatically after the base deployment is stable
 - all secrets stay in `.env.production` on the VPS and never need to live in GitHub Actions
 
 ## Architecture
 
-`git push` -> GitHub Actions publishes `ghcr.io/kitakitsune0x/bigbossbot:latest` -> Watchtower on the VPS pulls the updated image -> Docker restarts `big-boss-app-prod` -> Cloudflare Tunnel serves the app on your hostname
+`git push` -> GitHub Actions publishes `ghcr.io/kitakitsune0x/bigbossbot:latest` -> Docker on the VPS runs the app image -> Caddy serves your domain over HTTPS and proxies traffic to `app:3000`
 
 ## Before You Begin
 
@@ -18,13 +18,12 @@ This deployment path is designed for a public GitHub repository with private run
    - Public is the simplest path. The VPS can pull the image without a registry login.
    - Private also works, but you must run `docker login ghcr.io` on the VPS with a token that has `read:packages`.
    - A public repository does not automatically make the GHCR container package public.
-3. Add your domain to Cloudflare if you want the origin IP hidden.
+3. Point the domain you want to use at the VM with DNS `A` and/or `AAAA` records.
+4. Open inbound ports `80` and `443` to the VM so Caddy can complete ACME HTTP challenges and serve HTTPS.
 
-## Cloudflare Tunnel Setup
+## Caddy Setup
 
-Create a tunnel in Cloudflare Zero Trust and add a public hostname that forwards traffic to `http://app:3000`.
-
-When Cloudflare gives you the tunnel token, keep it for `.env.production` as `CLOUDFLARE_TUNNEL_TOKEN`.
+The production stack includes Caddy and a repo-managed [Caddyfile](../Caddyfile) that reverse-proxies your domain to `http://app:3000` over the Docker network.
 
 ## VPS Bootstrap
 
@@ -38,12 +37,12 @@ cp .env.production.example .env.production
 
 Edit `.env.production` and replace every placeholder value before starting anything:
 
+- `APP_DOMAIN`
 - `POSTGRES_PASSWORD`
 - `DATABASE_URL`
 - `AUTH_ENCRYPTION_KEY`
 - `BOOTSTRAP_ADMIN_USERNAME`
 - `BOOTSTRAP_ADMIN_PASSWORD`
-- `CLOUDFLARE_TUNNEL_TOKEN`
 
 The container refuses to start if `AUTH_ENCRYPTION_KEY` or `BOOTSTRAP_ADMIN_PASSWORD` still use the example placeholder values.
 
@@ -63,10 +62,19 @@ That creates:
 
 - `postgres` for the app database
 - `app` for BIG BOSS BOT
-- `watchtower` to auto-pull newer images from GHCR
-- `cloudflared` so the app can be reached without opening inbound ports on the VPS
+- `caddy` to serve HTTPS and reverse-proxy to the app
+
+The first HTTPS certificate issuance can take a minute or two after DNS finishes propagating.
 
 ## Automatic Updates
+
+Watchtower is optional in the Caddy-based stack because some older VM Docker installations still ship incompatible API clients.
+
+Once your Docker tooling is current, you can enable Watchtower with:
+
+```bash
+docker compose --profile watchtower --env-file .env.production -f docker-compose.vps.yml up -d watchtower
+```
 
 Watchtower polls GHCR every `WATCHTOWER_POLL_INTERVAL` seconds and only updates the app container that carries the `bigbossbot` scope label.
 
@@ -96,7 +104,7 @@ docker compose --env-file .env.production -f docker-compose.vps.yml ps
 Tail logs:
 
 ```bash
-docker compose --env-file .env.production -f docker-compose.vps.yml logs -f app cloudflared watchtower
+docker compose --env-file .env.production -f docker-compose.vps.yml logs -f app caddy
 ```
 
 Stop the stack:
@@ -108,5 +116,6 @@ docker compose --env-file .env.production -f docker-compose.vps.yml down
 ## Notes
 
 - The production compose file does not publish the app port or Postgres port to the internet.
+- Caddy publishes ports `80` and `443` on the host and keeps the app itself private on the internal Docker network.
 - If you later want the MCP sidecar on the VPS too, it is safer to add it separately after the web app is stable.
 - Bootstrapping the admin account is idempotent. After the first successful deploy, you can remove `BOOTSTRAP_ADMIN_PASSWORD` from `.env.production` if you prefer.

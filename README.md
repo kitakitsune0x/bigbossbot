@@ -204,7 +204,7 @@ GitHub publishes the app image to `ghcr.io/kitakitsune0x/bigbossbot`.
 
 For a public repository, treat the top-level [docker-compose.yml](./docker-compose.yml) file as local development and single-machine testing.
 
-For an internet-exposed VM, use [docs/vps-deploy.md](./docs/vps-deploy.md) together with [docker-compose.vps.yml](./docker-compose.vps.yml). That path is designed for a public repo, Docker-based self-hosting, GHCR image updates, and private runtime secrets that stay only on the server.
+For an internet-exposed VM, use [docs/vps-deploy.md](./docs/vps-deploy.md) together with [docker-compose.vps.yml](./docker-compose.vps.yml). That path is designed for a public repo, Docker-based self-hosting, GHCR image updates, Caddy-managed HTTPS, and private runtime secrets that stay only on the server.
 
 1. Clone the repo on your server and move into the project directory.
 
@@ -221,11 +221,11 @@ cp .env.production.example .env.production
 
 3. Replace every placeholder value in `.env.production`. At minimum, set:
 
+- `APP_DOMAIN` to the DNS hostname pointing at your VM
 - `BIG_BOSS_IMAGE=ghcr.io/kitakitsune0x/bigbossbot:YYYY.MM.DD` to pin an exact build, or leave `:latest` if you want the moving default
 - `AUTH_ENCRYPTION_KEY` to a long random secret
 - `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD` to the first admin account you want created
 - `POSTGRES_PASSWORD` and `DATABASE_URL` for the bundled Postgres service
-- `CLOUDFLARE_TUNNEL_TOKEN` if you are using the bundled tunnel service
 
 4. Pull the published containers and start the production stack.
 
@@ -233,14 +233,15 @@ cp .env.production.example .env.production
 docker compose --env-file .env.production -f docker-compose.vps.yml up -d
 ```
 
-5. Follow the full VM deployment guide in [docs/vps-deploy.md](./docs/vps-deploy.md) for automatic updates, rollbacks, and reverse-proxy or Cloudflare Tunnel setup.
+5. Point your DNS `A` or `AAAA` record at the VM, open ports `80` and `443`, and let Caddy obtain the certificate automatically.
 
-If you prefer a traditional reverse proxy instead of Cloudflare Tunnel, keep the `app` service private on the Docker network and expose it through Caddy, Nginx, or Traefik.
+6. Follow the full VM deployment guide in [docs/vps-deploy.md](./docs/vps-deploy.md) for automatic updates, rollbacks, and Caddy setup details.
 
 Recommended production setup:
 
 - keep the bundled Postgres volume mounted so data survives container restarts
 - update by changing `BIG_BOSS_IMAGE` to a newer `YYYY.MM.DD` tag, then run `docker compose --env-file .env.production -f docker-compose.vps.yml up -d`
+- enable Watchtower later with `docker compose --profile watchtower --env-file .env.production -f docker-compose.vps.yml up -d watchtower` once your Docker tooling is up to date
 - if you rebuild locally and want a pinned date tag inside the image metadata, export `APP_VERSION=YYYY.MM.DD` before `docker compose build`
 
 ## Auth Setup Notes

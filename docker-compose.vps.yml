@@ -50,9 +50,29 @@ services:
     networks:
       - internal
 
+  caddy:
+    image: caddy:2-alpine
+    container_name: big-boss-caddy
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN in .env.production}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - internal
+
   watchtower:
     image: containrrr/watchtower:latest
     container_name: big-boss-watchtower
+    profiles: ["watchtower"]
     restart: unless-stopped
     command:
       - --label-enable
@@ -66,24 +86,10 @@ services:
     networks:
       - internal
 
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: big-boss-cloudflared
-    restart: unless-stopped
-    depends_on:
-      app:
-        condition: service_healthy
-    command:
-      - tunnel
-      - --no-autoupdate
-      - run
-    environment:
-      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?Set CLOUDFLARE_TUNNEL_TOKEN in .env.production}
-    networks:
-      - internal
-
 networks:
   internal:
 
 volumes:
   big-boss-postgres-data:
+  caddy-data:
+  caddy-config:
