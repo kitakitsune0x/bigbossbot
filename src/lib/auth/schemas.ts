@@ -41,6 +41,7 @@ export const setupTotpSchema = z.object({
 });
 
 const conflictMapPreferencesSchema = z.object({
+  mapMode: z.enum(['default', 'deepstate']),
   showMilAir: z.boolean(),
   showNaval: z.boolean(),
   showCities: z.boolean(),

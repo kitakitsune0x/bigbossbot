@@ -5,9 +5,10 @@ import { useDataFeed, formatPrice } from '@/lib/hooks';
 interface OilData {
   type: string;
   name: string;
-  price: number;
-  change: number;
-  changePercent: number;
+  price: number | null;
+  change: number | null;
+  changePercent: number | null;
+  error?: boolean;
 }
 
 export default function MetricsBar() {
@@ -18,9 +19,21 @@ export default function MetricsBar() {
   const natGas = oilData?.find(o => o.type === 'natural_gas');
 
   const metrics = [
-    { label: 'WTI', value: wti ? `$${formatPrice(wti.price)}` : '—', change: wti?.changePercent ?? 0 },
-    { label: 'BRENT', value: brent ? `$${formatPrice(brent.price)}` : '—', change: brent?.changePercent ?? 0 },
-    { label: 'NATGAS', value: natGas ? `$${formatPrice(natGas.price)}` : '—', change: natGas?.changePercent ?? 0 },
+    {
+      label: 'WTI',
+      value: wti && !wti.error && wti.price !== null ? `$${formatPrice(wti.price)}` : '—',
+      change: !wti?.error && wti?.changePercent !== null && wti?.changePercent !== undefined ? wti.changePercent : null,
+    },
+    {
+      label: 'BRENT',
+      value: brent && !brent.error && brent.price !== null ? `$${formatPrice(brent.price)}` : '—',
+      change: !brent?.error && brent?.changePercent !== null && brent?.changePercent !== undefined ? brent.changePercent : null,
+    },
+    {
+      label: 'NATGAS',
+      value: natGas && !natGas.error && natGas.price !== null ? `$${formatPrice(natGas.price)}` : '—',
+      change: !natGas?.error && natGas?.changePercent !== null && natGas?.changePercent !== undefined ? natGas.changePercent : null,
+    },
     { label: 'THREAT', value: 'ELEVATED', change: 0, isThreat: true },
   ];
 
@@ -34,7 +47,7 @@ export default function MetricsBar() {
           }`}>
             {m.value}
           </span>
-          {!m.isThreat && m.change !== 0 && (
+          {!m.isThreat && typeof m.change === 'number' && m.change !== 0 && (
             <span className={`text-[10px] font-mono ${m.change > 0 ? 'value-up' : 'value-down'}`}>
               {m.change > 0 ? '+' : ''}{m.change.toFixed(2)}%
             </span>

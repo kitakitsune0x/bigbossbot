@@ -5,9 +5,9 @@ import { useDataFeed, formatPrice, formatChange } from '@/lib/hooks';
 interface OilData {
   type: string;
   name: string;
-  price: number;
-  change: number;
-  changePercent: number;
+  price: number | null;
+  change: number | null;
+  changePercent: number | null;
   error?: boolean;
 }
 
@@ -16,7 +16,7 @@ export default function OilPanel() {
 
   return (
     <div className="flex h-full flex-col bg-card">
-      <div className="flex items-center justify-between border-b border-border px-3 py-1.5 shrink-0">
+      <div className="flex items-center justify-between border-b border-border pl-4 pr-3 py-1.5 shrink-0">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground">Energy</span>
         <span className="text-[10px] text-muted-foreground font-mono">{prices?.length ?? 0} contracts</span>
       </div>
@@ -34,9 +34,9 @@ export default function OilPanel() {
               </div>
               <div className="text-right">
                 <p className="text-[12px] font-mono font-medium text-foreground">
-                  {item.error ? 'N/A' : `$${formatPrice(item.price)}`}
+                  {item.error || item.price === null ? 'N/A' : `$${formatPrice(item.price)}`}
                 </p>
-                {!item.error && (
+                {!item.error && item.change !== null && item.changePercent !== null && (
                   <p className={`text-[10px] font-mono ${item.change >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                     {formatChange(item.change, item.changePercent)}
                   </p>

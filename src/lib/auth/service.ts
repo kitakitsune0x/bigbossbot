@@ -117,6 +117,7 @@ function parseConflictMapPreferences(value: unknown) {
   const record = value as Record<string, unknown>;
 
   return {
+    mapMode: record.mapMode === 'deepstate' ? 'deepstate' : defaults.mapMode,
     showMilAir: typeof record.showMilAir === 'boolean' ? record.showMilAir : defaults.showMilAir,
     showNaval: typeof record.showNaval === 'boolean' ? record.showNaval : defaults.showNaval,
     showCities: typeof record.showCities === 'boolean' ? record.showCities : defaults.showCities,

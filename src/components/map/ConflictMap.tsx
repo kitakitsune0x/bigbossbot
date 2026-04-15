@@ -250,6 +250,7 @@ export default function ConflictMap({ className }: MapProps) {
 
   const mapPreferences = preferences.uiState.conflictMap[theater];
   const {
+    mapMode,
     showMilAir,
     showNaval,
     showCities,
@@ -257,6 +258,8 @@ export default function ConflictMap({ className }: MapProps) {
     showRangeRings,
     measureMode,
   } = mapPreferences;
+  const showDeepStateMap = theater === 'ukraine' && mapMode === 'deepstate';
+  const showLeafletMap = !showDeepStateMap;
 
   const updateMapPreferences = useCallback(async (next: Partial<typeof mapPreferences>) => {
     await setConflictMapPreferences(theater, {
@@ -271,7 +274,7 @@ export default function ConflictMap({ className }: MapProps) {
 
   // Initialize map
   useEffect(() => {
-    if (!mounted || !L) return;
+    if (!mounted || !L || !showLeafletMap) return;
     const container = document.getElementById('conflict-map');
     if (!container || mapRef.current) return;
 
@@ -308,7 +311,7 @@ export default function ConflictMap({ className }: MapProps) {
       navalMarkersRef.current.clear();
       flightTrailsRef.current.clear();
     };
-  }, [mounted, theaterConfig.center, theaterConfig.zoom]);
+  }, [mounted, showLeafletMap, theaterConfig.center, theaterConfig.zoom]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -891,19 +894,42 @@ export default function ConflictMap({ className }: MapProps) {
 
   return (
     <div className={`bg-card ${className || ''} flex flex-col overflow-hidden`}>
-      <div className="relative z-10 flex items-center justify-between border-b border-border bg-card px-3 py-1.5 shrink-0">
+      <div className="relative z-10 flex items-center justify-between border-b border-border bg-card pl-4 pr-3 py-1.5 shrink-0">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground">Map</span>
         <div className="flex items-center gap-1 flex-wrap justify-end">
-          {theater === 'ukraine' ? (
-            <a
-              href={DEEP_STATE_MAP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px] px-2 py-0.5 rounded-md border border-sky-500/40 bg-sky-500/10 text-sky-300 transition-colors hover:bg-sky-500/20"
-            >
-              Open DeepStateMap
-            </a>
-          ) : (
+          {theater === 'ukraine' && (
+            <>
+              <button
+                onClick={() => { void updateMapPreferences({ mapMode: 'default', measureMode: false }); }}
+                className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${
+                  mapMode === 'default'
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                Default
+              </button>
+              <button
+                onClick={() => { void updateMapPreferences({ mapMode: 'deepstate', measureMode: false }); }}
+                className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${
+                  mapMode === 'deepstate'
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                DeepState
+              </button>
+              <a
+                href={DEEP_STATE_MAP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] px-2 py-0.5 rounded-md border border-sky-500/40 bg-sky-500/10 text-sky-300 transition-colors hover:bg-sky-500/20"
+              >
+                Open DeepState
+              </a>
+            </>
+          )}
+          {showLeafletMap && (
             [
               { label: `Air ${flights?.military || 0}`, active: showMilAir, toggle: () => { void updateMapPreferences({ showMilAir: !showMilAir }); } },
               { label: `Nav ${naval?.ships?.length || 0}`, active: showNaval, toggle: () => { void updateMapPreferences({ showNaval: !showNaval }); } },
@@ -938,7 +964,7 @@ export default function ConflictMap({ className }: MapProps) {
         </div>
       </div>
       <div className="relative flex-1 min-h-0 overflow-hidden">
-        {theater === 'ukraine' ? (
+        {showDeepStateMap ? (
           <iframe
             src={DEEP_STATE_MAP_URL}
             title="DeepStateMap Ukraine Frontline Map"
@@ -953,7 +979,7 @@ export default function ConflictMap({ className }: MapProps) {
         ) : (
           <div id="conflict-map" className="w-full h-full" />
         )}
-        {theater !== 'ukraine' && measureMode && (
+        {showLeafletMap && measureMode && (
           <div className="absolute top-2 left-2 z-[1000] text-xs px-2 py-1 rounded-md bg-background/90 border text-yellow-500">
             Measure mode — Click points. Click Dist to exit.
           </div>

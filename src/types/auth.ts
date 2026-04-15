@@ -17,7 +17,10 @@ export interface SessionContext extends AuthSession {
   totpRequired: boolean;
 }
 
+export type ConflictMapMode = 'default' | 'deepstate';
+
 export interface ConflictMapPreferences {
+  mapMode: ConflictMapMode;
   showMilAir: boolean;
   showNaval: boolean;
   showCities: boolean;
@@ -41,6 +44,7 @@ export interface UserPreferences {
 }
 
 export const DEFAULT_CONFLICT_MAP_PREFERENCES: ConflictMapPreferences = {
+  mapMode: 'default',
   showMilAir: true,
   showNaval: true,
   showCities: true,
