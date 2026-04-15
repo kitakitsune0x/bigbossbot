@@ -9,7 +9,6 @@ import {
   Users,
   LogOut,
   LogIn,
-  UserPlus,
   Newspaper,
   Map,
   Siren,
@@ -186,7 +185,7 @@ export default function AppSidebar() {
     const allRoutes = [
       ...NAV_ITEMS.filter((item) => isAuthenticated || item.href === '/dashboard').map((item) => item.href),
       ...(role === 'admin' ? ADMIN_ITEMS.map((item) => item.href) : []),
-      ...(!isAuthenticated ? ['/login', '/signup'] : []),
+      ...(!isAuthenticated ? ['/login'] : []),
       ...INTEL_ITEMS.map((item) => `/${item.panelId}`),
       ...MARKET_ITEMS.map((item) => `/${item.panelId}`),
       ...MILITARY_ITEMS.map((item) => `/${item.panelId}`),
@@ -431,17 +430,6 @@ export default function AppSidebar() {
                   label="Sign in"
                   onClick={(event) => navigateToRoute('/login', event)}
                   onWarmRoute={() => warmRoute('/login')}
-                />
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarNavLink
-                  href="/signup"
-                  icon={UserPlus}
-                  isActive={pathname === '/signup'}
-                  isPending={pendingHref === '/signup'}
-                  label="Create account"
-                  onClick={(event) => navigateToRoute('/signup', event)}
-                  onWarmRoute={() => warmRoute('/signup')}
                 />
               </SidebarMenuItem>
             </>

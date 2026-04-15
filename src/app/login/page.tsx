@@ -1,7 +1,10 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import LoginForm from '@/components/auth/LoginForm';
 import BrandLogo from '@/components/layout/BrandLogo';
+import { Button } from '@/components/ui/button';
 import { APP_NAME, AUTH_REQUIRE_2FA } from '@/lib/auth/config';
 import { getOptionalPageSession } from '@/lib/auth/session';
 
@@ -71,7 +74,19 @@ export default async function LoginPage() {
         </div>
       </section>
 
-      <section className="flex items-center justify-center p-6 md:p-10">
+      <section className="relative flex items-center justify-center p-6 md:p-10">
+        <div className="absolute left-6 top-6 md:left-10 md:top-10">
+          <Button
+            asChild
+            variant="outline"
+            className="gap-2 border-border/80 bg-background/90 shadow-sm backdrop-blur-sm hover:bg-accent hover:text-foreground"
+          >
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4" />
+              Go back
+            </Link>
+          </Button>
+        </div>
         <div className="flex w-full max-w-sm flex-col gap-8">
           <div className="flex items-center gap-3 lg:hidden">
             <BrandLogo className="size-10 overflow-hidden rounded-xl border border-border bg-background object-cover shadow-sm" priority />
