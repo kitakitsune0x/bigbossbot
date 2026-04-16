@@ -313,6 +313,10 @@ Military aircraft tracking data is provided by [adsb.lol](https://www.adsb.lol) 
 
 This project is not affiliated with, endorsed by, or sponsored by any of the data providers, news organizations, governments, or military entities whose data it aggregates.
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/chart?repos=kitakitsune0x/bigbossbot&type=date&legend=top-left)](https://www.star-history.com/?repos=kitakitsune0x%2Fbigbossbot&type=date&legend=top-left)
+
 ## License
 
 [MIT](LICENSE)
