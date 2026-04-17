@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Bot, Copy, KeyRound, Trash2 } from 'lucide-react';
-import type { ApiTokenSummary } from '@/types/auth';
+import type { ApiTokenScope, ApiTokenSummary } from '@/types/auth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,28 @@ type CreateTokenResponse = {
   token: string;
 };
 
+const TOKEN_SCOPE_OPTIONS: Array<{
+  value: ApiTokenScope;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'read_intel',
+    label: 'Intel only',
+    description: 'Public intel feeds and MCP snapshot/search/feed/map tools.',
+  },
+  {
+    value: 'read_network',
+    label: 'Network read',
+    description: 'Adds network status reads for member agents.',
+  },
+  {
+    value: 'use_network',
+    label: 'Network write',
+    description: 'Adds network messaging and control-capable agent access.',
+  },
+];
+
 function formatDate(value: string | null) {
   if (!value) {
     return 'Never';
@@ -33,6 +55,7 @@ function formatDate(value: string | null) {
 export default function AgentAccessTokensSection({ initialTokens }: AgentAccessTokensSectionProps) {
   const [tokens, setTokens] = useState(initialTokens);
   const [name, setName] = useState('Codex MCP');
+  const [scope, setScope] = useState<ApiTokenScope>('read_intel');
   const [isCreating, setIsCreating] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +78,7 @@ export default function AgentAccessTokensSection({ initialTokens }: AgentAccessT
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, scope }),
       });
 
       const payload = await response.json();
@@ -67,6 +90,7 @@ export default function AgentAccessTokensSection({ initialTokens }: AgentAccessT
       setTokens((current) => [result.apiToken, ...current]);
       setCreatedToken(result);
       setName('Codex MCP');
+      setScope('read_intel');
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Unable to create token.');
     } finally {
@@ -127,7 +151,7 @@ export default function AgentAccessTokensSection({ initialTokens }: AgentAccessT
           <Badge variant="outline">{activeCount} active</Badge>
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          Create read-only tokens for MCP clients and agent skills. The plaintext token is shown once.
+          Create scoped tokens for MCP clients and agent skills. The plaintext token is shown once.
         </p>
       </div>
 
@@ -161,7 +185,7 @@ export default function AgentAccessTokensSection({ initialTokens }: AgentAccessT
           </Alert>
         )}
 
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto] md:items-end">
           <div className="space-y-1.5">
             <Label htmlFor="token-name" className="text-xs">Token label</Label>
             <Input
@@ -171,6 +195,24 @@ export default function AgentAccessTokensSection({ initialTokens }: AgentAccessT
               onChange={(event) => setName(event.target.value)}
               placeholder="Codex MCP"
             />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="token-scope" className="text-xs">Scope</Label>
+            <select
+              id="token-scope"
+              value={scope}
+              onChange={(event) => setScope(event.target.value as ApiTokenScope)}
+              className="h-10 w-full rounded border border-input bg-background px-3 text-sm"
+            >
+              {TOKEN_SCOPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-muted-foreground">
+              {TOKEN_SCOPE_OPTIONS.find((option) => option.value === scope)?.description}
+            </p>
           </div>
           <Button
             type="button"

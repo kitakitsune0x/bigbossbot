@@ -1,51 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { authorizeReadApiAccess } from '@/lib/auth/session';
 import { fetchWithTimeout, parseXML, getTextContent } from '@/lib/fetcher';
-import { getTheaterFromRequest, type TheaterId } from '@/lib/theater';
 
 export const dynamic = 'force-dynamic';
 
-const STRIKE_QUERIES: Record<TheaterId, string[]> = {
-  'middle-east': [
-    'Iran+OR+Israel+missile+strike+OR+airstrike+OR+intercept',
-    'Iran+OR+Israel+drone+attack+OR+rocket+launch',
-  ],
-  ukraine: [
-    'Ukraine+OR+Russia+missile+strike+OR+airstrike+OR+intercept',
-    'Ukraine+OR+Russia+drone+attack+OR+rocket+launch+OR+artillery',
-  ],
-};
+const STRIKE_QUERIES = [
+  'Iran+OR+Israel+missile+strike+OR+airstrike+OR+intercept',
+  'Iran+OR+Israel+drone+attack+OR+rocket+launch',
+  'Ukraine+OR+Russia+missile+strike+OR+airstrike+OR+intercept',
+  'Ukraine+OR+Russia+drone+attack+OR+rocket+launch+OR+artillery',
+] as const;
 
-const COUNTRY_MATCHERS: Record<TheaterId, Array<[string, string]>> = {
-  'middle-east': [
-    ['iran', 'Iran'],
-    ['tehran', 'Iran'],
-    ['israel', 'Israel'],
-    ['lebanon', 'Lebanon'],
-    ['syria', 'Syria'],
-    ['yemen', 'Yemen'],
-    ['houthi', 'Yemen'],
-  ],
-  ukraine: [
-    ['kyiv', 'Ukraine'],
-    ['kiev', 'Ukraine'],
-    ['kharkiv', 'Ukraine'],
-    ['odesa', 'Ukraine'],
-    ['odessa', 'Ukraine'],
-    ['dnipro', 'Ukraine'],
-    ['zaporizhzhia', 'Ukraine'],
-    ['sumy', 'Ukraine'],
-    ['chernihiv', 'Ukraine'],
-    ['ukraine', 'Ukraine'],
-    ['belgorod', 'Russia'],
-    ['kursk', 'Russia'],
-    ['bryansk', 'Russia'],
-    ['russia', 'Russia'],
-    ['crimea', 'Crimea'],
-    ['sevastopol', 'Crimea'],
-    ['black sea', 'Black Sea'],
-  ],
-};
+const COUNTRY_MATCHERS: Array<[string, string]> = [
+  ['iran', 'Iran'],
+  ['tehran', 'Iran'],
+  ['israel', 'Israel'],
+  ['lebanon', 'Lebanon'],
+  ['syria', 'Syria'],
+  ['yemen', 'Yemen'],
+  ['houthi', 'Yemen'],
+  ['kyiv', 'Ukraine'],
+  ['kiev', 'Ukraine'],
+  ['kharkiv', 'Ukraine'],
+  ['odesa', 'Ukraine'],
+  ['odessa', 'Ukraine'],
+  ['dnipro', 'Ukraine'],
+  ['zaporizhzhia', 'Ukraine'],
+  ['sumy', 'Ukraine'],
+  ['chernihiv', 'Ukraine'],
+  ['ukraine', 'Ukraine'],
+  ['belgorod', 'Russia'],
+  ['kursk', 'Russia'],
+  ['bryansk', 'Russia'],
+  ['russia', 'Russia'],
+  ['crimea', 'Crimea'],
+  ['sevastopol', 'Crimea'],
+  ['black sea', 'Black Sea'],
+] as const;
 
 function classifyStrike(text: string) {
   let category = 'REPORT';
@@ -74,26 +65,29 @@ function classifyStrike(text: string) {
   return { category, severity };
 }
 
-function detectCountry(text: string, theater: TheaterId) {
-  for (const [needle, label] of COUNTRY_MATCHERS[theater]) {
-    if (text.includes(needle)) return label;
+function detectCountry(text: string) {
+  for (const [needle, label] of COUNTRY_MATCHERS) {
+    if (text.includes(needle)) {
+      return label;
+    }
   }
 
-  return theater === 'ukraine' ? 'Ukraine theater' : 'Middle East';
+  return 'Global';
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const auth = await authorizeReadApiAccess();
   if (auth instanceof NextResponse) return auth;
 
-  const theater = getTheaterFromRequest(request);
   const strikes: StrikeEvent[] = [];
 
-  for (const query of STRIKE_QUERIES[theater]) {
+  for (const query of STRIKE_QUERIES) {
     try {
       const url = `https://news.google.com/rss/search?q=${query}&hl=en-US&gl=US&ceid=US:en`;
       const res = await fetchWithTimeout(url, { timeout: 8000 });
-      if (!res.ok) continue;
+      if (!res.ok) {
+        continue;
+      }
 
       const text = await res.text();
       const doc = parseXML(text);
@@ -107,7 +101,9 @@ export async function GET(request: NextRequest) {
 
         const dashIdx = title.lastIndexOf(' - ');
         const source = dashIdx > 0 ? title.substring(dashIdx + 3) : '';
-        if (dashIdx > 0) title = title.substring(0, dashIdx);
+        if (dashIdx > 0) {
+          title = title.substring(0, dashIdx);
+        }
 
         const lowered = title.toLowerCase();
         const { category, severity } = classifyStrike(lowered);
@@ -120,7 +116,7 @@ export async function GET(request: NextRequest) {
           title,
           source,
           url: link,
-          country: detectCountry(lowered, theater),
+          country: detectCountry(lowered),
         });
       }
     } catch {

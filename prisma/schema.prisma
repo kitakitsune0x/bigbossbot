@@ -20,6 +20,8 @@ enum AccountStatus {
 
 enum ApiTokenScope {
   read_intel
+  read_network
+  use_network
 }
 
 model User {
@@ -93,7 +95,7 @@ model UserPreference {
   desktopNotificationsEnabled Boolean  @default(true)
   hiddenPanels                Json     @default("[]")
   panelOrder                  Json     @default("[]")
-  theater                     String   @default("middle-east")
+  theater                     String   @default("global")
   uiState                     Json     @default("{}")
   createdAt                   DateTime @default(now())
   updatedAt                   DateTime @updatedAt

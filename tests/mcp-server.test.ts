@@ -91,6 +91,6 @@ test('mcp server initializes and advertises the expected tools', async (t) => {
 
   assert.deepEqual(
     toolsResponse.result.tools.map((tool) => tool.name),
-    ['get_snapshot', 'search_intel', 'get_feed'],
+    ['list_workspaces', 'get_snapshot', 'get_feed', 'search_intel', 'get_map_entities', 'get_network_status'],
   );
 });

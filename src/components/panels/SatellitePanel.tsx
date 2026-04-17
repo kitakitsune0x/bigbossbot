@@ -1,6 +1,6 @@
 'use client';
 
-import { useCurrentTheater, useTheaterDataFeed } from '@/components/dashboard/useTheaterDataFeed';
+import { useTheaterDataFeed } from '@/components/dashboard/useTheaterDataFeed';
 
 interface FireEvent {
   lat: number;
@@ -43,7 +43,7 @@ function getRegion(lat: number, lon: number): string {
   if (lat > 30 && lat < 34 && lon > 35 && lon < 40) return 'Jordan';
   if (lat > 23 && lat < 27 && lon > 45 && lon < 51) return 'Qatar/Bahrain';
   if (lat > 21 && lat < 27 && lon > 55 && lon < 60) return 'Oman';
-  return 'Middle East';
+  return 'Global';
 }
 
 const INTENSITY_COLOR: Record<string, string> = {
@@ -54,7 +54,6 @@ const INTENSITY_COLOR: Record<string, string> = {
 };
 
 export default function SatellitePanel() {
-  const theater = useCurrentTheater();
   const { data, loading } = useTheaterDataFeed<FIRMSData>('/api/fires', 600000);
 
   return (
@@ -85,7 +84,7 @@ export default function SatellitePanel() {
           ))
         ) : data?.events.length === 0 ? (
           <p className="py-8 text-center text-[12px] text-muted-foreground">
-            No thermal anomalies detected in the {theater === 'ukraine' ? 'Ukraine theater' : 'region'}
+            No thermal anomalies detected across the current global watchlist
           </p>
         ) : (
           data?.events.slice(0, 30).map((event, i) => {

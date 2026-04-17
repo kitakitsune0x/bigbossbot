@@ -1,38 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { authorizeReadApiAccess } from '@/lib/auth/session';
 import { fetchWithTimeout, parseXML, getTextContent } from '@/lib/fetcher';
-import { getTheaterFromRequest, type TheaterId } from '@/lib/theater';
 
 export const dynamic = 'force-dynamic';
 
-const COUNTRY_QUERIES: Record<TheaterId, {
-  name: string;
-  flag: string;
-  query: string;
-}[]> = {
-  'middle-east': [
-    { name: 'Lebanon', flag: '🇱🇧', query: 'Lebanon+strike+OR+airstrike+OR+attack+OR+missile+OR+bomb+OR+Hezbollah+OR+Beirut+attack' },
-    { name: 'Iran', flag: '🇮🇷', query: 'Iran+strike+OR+attack+OR+missile+OR+bomb+OR+Tehran+strike+OR+IRGC+attack' },
-    { name: 'Iraq', flag: '🇮🇶', query: 'Iraq+strike+OR+attack+OR+missile+OR+Baghdad+strike+OR+militia+attack' },
-    { name: 'Syria', flag: '🇸🇾', query: 'Syria+strike+OR+airstrike+OR+attack+OR+Damascus+strike' },
-    { name: 'Yemen', flag: '🇾🇪', query: 'Yemen+Houthi+strike+OR+attack+OR+missile+OR+drone+OR+"Red+Sea"+attack' },
-    { name: 'Kuwait', flag: '🇰🇼', query: 'Kuwait+siren+OR+missile+OR+attack+OR+"air+defense"+OR+intercept' },
-    { name: 'Bahrain', flag: '🇧🇭', query: 'Bahrain+attack+OR+missile+OR+military+OR+threat+OR+"5th+Fleet"' },
-    { name: 'UAE', flag: '🇦🇪', query: 'UAE+OR+Dubai+OR+"Abu+Dhabi"+attack+OR+missile+OR+drone+OR+intercept' },
-    { name: 'Saudi Arabia', flag: '🇸🇦', query: 'Saudi+Arabia+attack+OR+missile+OR+drone+OR+intercept+OR+Houthi' },
-    { name: 'Jordan', flag: '🇯🇴', query: 'Jordan+attack+OR+missile+OR+intercept+OR+airspace+OR+military' },
-  ],
-  ukraine: [
-    { name: 'Ukraine', flag: '🇺🇦', query: 'Ukraine+air+raid+OR+missile+OR+drone+OR+strike+OR+Kyiv+attack' },
-    { name: 'Russia', flag: '🇷🇺', query: 'Russia+airbase+OR+drone+OR+strike+OR+Belgorod+OR+Kursk+attack' },
-    { name: 'Belarus', flag: '🇧🇾', query: 'Belarus+military+OR+border+OR+missile+OR+drone+OR+airspace' },
-    { name: 'Poland', flag: '🇵🇱', query: 'Poland+airspace+OR+missile+OR+drone+OR+fighter+scramble+Ukraine' },
-    { name: 'Romania', flag: '🇷🇴', query: 'Romania+airspace+OR+drone+OR+Black+Sea+OR+missile+Ukraine' },
-    { name: 'Moldova', flag: '🇲🇩', query: 'Moldova+airspace+OR+drone+OR+missile+OR+Transnistria+security' },
-    { name: 'Black Sea', flag: '🌊', query: 'Black+Sea+fleet+OR+naval+drone+OR+missile+OR+Sevastopol' },
-    { name: 'Crimea', flag: '⚫', query: 'Crimea+Sevastopol+strike+OR+drone+OR+missile' },
-  ],
-};
+const COUNTRY_QUERIES = [
+  { name: 'Lebanon', flag: '🇱🇧', query: 'Lebanon+strike+OR+airstrike+OR+attack+OR+missile+OR+bomb+OR+Hezbollah+OR+Beirut+attack' },
+  { name: 'Iran', flag: '🇮🇷', query: 'Iran+strike+OR+attack+OR+missile+OR+bomb+OR+Tehran+strike+OR+IRGC+attack' },
+  { name: 'Iraq', flag: '🇮🇶', query: 'Iraq+strike+OR+attack+OR+missile+OR+Baghdad+strike+OR+militia+attack' },
+  { name: 'Syria', flag: '🇸🇾', query: 'Syria+strike+OR+airstrike+OR+attack+OR+Damascus+strike' },
+  { name: 'Yemen', flag: '🇾🇪', query: 'Yemen+Houthi+strike+OR+attack+OR+missile+OR+drone+OR+"Red+Sea"+attack' },
+  { name: 'Kuwait', flag: '🇰🇼', query: 'Kuwait+siren+OR+missile+OR+attack+OR+"air+defense"+OR+intercept' },
+  { name: 'Bahrain', flag: '🇧🇭', query: 'Bahrain+attack+OR+missile+OR+military+OR+threat+OR+"5th+Fleet"' },
+  { name: 'UAE', flag: '🇦🇪', query: 'UAE+OR+Dubai+OR+"Abu+Dhabi"+attack+OR+missile+OR+drone+OR+intercept' },
+  { name: 'Saudi Arabia', flag: '🇸🇦', query: 'Saudi+Arabia+attack+OR+missile+OR+drone+OR+intercept+OR+Houthi' },
+  { name: 'Jordan', flag: '🇯🇴', query: 'Jordan+attack+OR+missile+OR+intercept+OR+airspace+OR+military' },
+  { name: 'Ukraine', flag: '🇺🇦', query: 'Ukraine+air+raid+OR+missile+OR+drone+OR+strike+OR+Kyiv+attack' },
+  { name: 'Russia', flag: '🇷🇺', query: 'Russia+airbase+OR+drone+OR+strike+OR+Belgorod+OR+Kursk+attack' },
+  { name: 'Belarus', flag: '🇧🇾', query: 'Belarus+military+OR+border+OR+missile+OR+drone+OR+airspace' },
+  { name: 'Poland', flag: '🇵🇱', query: 'Poland+airspace+OR+missile+OR+drone+OR+fighter+scramble+Ukraine' },
+  { name: 'Romania', flag: '🇷🇴', query: 'Romania+airspace+OR+drone+OR+Black+Sea+OR+missile+Ukraine' },
+  { name: 'Moldova', flag: '🇲🇩', query: 'Moldova+airspace+OR+drone+OR+missile+OR+Transnistria+security' },
+  { name: 'Black Sea', flag: '🌊', query: 'Black+Sea+fleet+OR+naval+drone+OR+missile+OR+Sevastopol' },
+  { name: 'Crimea', flag: '⚫', query: 'Crimea+Sevastopol+strike+OR+drone+OR+missile' },
+] as const;
 
 const CRITICAL_TERMS = [
   'killed', 'dead', 'deaths', 'casualties', 'massacre',
@@ -84,23 +75,21 @@ interface CountryEvent {
   hoursAgo: number;
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const auth = await authorizeReadApiAccess();
   if (auth instanceof NextResponse) return auth;
 
-  const theater = getTheaterFromRequest(request);
-  const queries = COUNTRY_QUERIES[theater];
   const results: { name: string; flag: string; events: CountryEvent[]; level: string }[] = [];
 
-  for (let i = 0; i < queries.length; i += 3) {
-    const batch = queries.slice(i, i + 3);
+  for (let i = 0; i < COUNTRY_QUERIES.length; i += 3) {
+    const batch = COUNTRY_QUERIES.slice(i, i + 3);
     const batchResults = await Promise.allSettled(
       batch.map(async (country) => {
         const url = `https://news.google.com/rss/search?q=${country.query}&hl=en-US&gl=US&ceid=US:en`;
         try {
           const res = await fetchWithTimeout(url, {
             timeout: 8000,
-            headers: { 'User-Agent': 'BIG-BOSS-BOT/1.0', 'Accept': 'application/rss+xml, text/xml, */*' },
+            headers: { 'User-Agent': 'BIG-BOSS-BOT/1.0', Accept: 'application/rss+xml, text/xml, */*' },
           });
           if (!res.ok) return { ...country, events: [] };
 

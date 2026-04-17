@@ -1,22 +1,44 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { authorizeReadApiAccess } from '@/lib/auth/session';
 import { fetchWithTimeout, parseXML, getTextContent } from '@/lib/fetcher';
-import { translateHebrew, translateCities, isHebrew, translateFreeText, CITY_TRANSLATIONS } from '@/lib/hebrew';
-import { getTheaterFromRequest, type TheaterId } from '@/lib/theater';
-import { THEATER_MAP_CONFIG } from '@/lib/theater-map';
+import {
+  translateHebrew,
+  translateCities,
+  isHebrew,
+  translateFreeText,
+  CITY_TRANSLATIONS,
+} from '@/lib/hebrew';
+import { LEGACY_THEATER_MAP_CONFIG } from '@/lib/theater-map';
 
 export const dynamic = 'force-dynamic';
 
-const STICKY_DURATION_MS: Record<TheaterId, number> = {
+type LegacyAlertRegion = 'middle-east' | 'ukraine';
+
+const STICKY_DURATION_MS: Record<LegacyAlertRegion, number> = {
   'middle-east': 90_000,
   ukraine: 15 * 60 * 1000,
 };
 
-let stickyAlerts: Record<TheaterId, (AlertEvent & { firstSeen: number })[]> = {
-  'middle-east': [],
-  ukraine: [],
+type AlertEvent = {
+  id: string;
+  time: string;
+  type: string;
+  threat: string;
+  threatOriginal: string;
+  locations: string[];
+  locationsOriginal: string[];
+  source: string;
+  active: boolean;
+  region: LegacyAlertRegion;
 };
+
+type StickyAlertEvent = AlertEvent & {
+  firstSeen: number;
+  stickyDurationMs: number;
+};
+
+let stickyAlerts: StickyAlertEvent[] = [];
 
 async function fetchMiddleEastAlerts() {
   const alerts: AlertEvent[] = [];
@@ -26,7 +48,7 @@ async function fetchMiddleEastAlerts() {
       timeout: 12000,
       headers: {
         'User-Agent': 'BIG-BOSS-BOT/1.0',
-        'Accept': 'application/json',
+        Accept: 'application/json',
       },
     });
 
@@ -57,13 +79,18 @@ async function fetchMiddleEastAlerts() {
             locationsOriginal: rawCities,
             source: 'Pikud HaOref',
             active: true,
+            region: 'middle-east',
           });
         });
       }
     }
   } catch (err) {
-    const isTimeout = err instanceof Error && (err.message.includes('Timeout') || (err as NodeJS.ErrnoException).code === 'UND_ERR_CONNECT_TIMEOUT');
-    if (!isTimeout) console.error('Tzeva Adom fetch error:', err);
+    const isTimeout =
+      err instanceof Error
+      && (err.message.includes('Timeout') || (err as NodeJS.ErrnoException).code === 'UND_ERR_CONNECT_TIMEOUT');
+    if (!isTimeout) {
+      console.error('Tzeva Adom fetch error:', err);
+    }
   }
 
   await Promise.all(alerts.map(async (alert) => {
@@ -71,7 +98,7 @@ async function fetchMiddleEastAlerts() {
       alert.threat = await translateFreeText(alert.threat);
     }
     alert.locations = await Promise.all(
-      alert.locations.map((loc) => isHebrew(loc) ? translateFreeText(loc) : Promise.resolve(loc)),
+      alert.locations.map((loc) => (isHebrew(loc) ? translateFreeText(loc) : Promise.resolve(loc))),
     );
   }));
 
@@ -84,7 +111,7 @@ async function fetchMiddleEastAlerts() {
 async function fetchUkraineAlerts() {
   const alerts: AlertEvent[] = [];
   const query = encodeURIComponent('Ukraine air raid alert OR missile OR drone OR Kyiv OR Kharkiv OR Odesa');
-  const cityKeys = THEATER_MAP_CONFIG.ukraine.alertCities;
+  const cityKeys = LEGACY_THEATER_MAP_CONFIG.ukraine.alertCities;
 
   try {
     const res = await fetchWithTimeout(
@@ -93,7 +120,7 @@ async function fetchUkraineAlerts() {
         timeout: 10000,
         headers: {
           'User-Agent': 'BIG-BOSS-BOT/1.0',
-          'Accept': 'application/rss+xml, text/xml, */*',
+          Accept: 'application/rss+xml, text/xml, */*',
         },
       },
     );
@@ -149,6 +176,7 @@ async function fetchUkraineAlerts() {
         locationsOriginal: [...locations],
         source,
         active: true,
+        region: 'ukraine',
       });
     }
   } catch (err) {
@@ -161,34 +189,48 @@ async function fetchUkraineAlerts() {
   };
 }
 
-export async function GET(request: NextRequest) {
+async function fetchGlobalAlerts() {
+  const [middleEast, ukraine] = await Promise.all([
+    fetchMiddleEastAlerts(),
+    fetchUkraineAlerts(),
+  ]);
+
+  return {
+    alerts: [...middleEast.alerts, ...ukraine.alerts],
+    source: `${middleEast.source} + ${ukraine.source}`,
+  };
+}
+
+export async function GET() {
   const auth = await authorizeReadApiAccess();
   if (auth instanceof NextResponse) return auth;
 
-  const theater = getTheaterFromRequest(request);
-  const fetched = theater === 'ukraine'
-    ? await fetchUkraineAlerts()
-    : await fetchMiddleEastAlerts();
-
+  const fetched = await fetchGlobalAlerts();
   const now = Date.now();
-  const theaterSticky = stickyAlerts[theater];
 
   for (const alert of fetched.alerts) {
-    const exists = theaterSticky.find((sticky) =>
-      sticky.threatOriginal === alert.threatOriginal
+    const exists = stickyAlerts.find((sticky) =>
+      sticky.region === alert.region
+      && sticky.threatOriginal === alert.threatOriginal
       && sticky.locationsOriginal.join() === alert.locationsOriginal.join(),
     );
+
     if (!exists) {
-      theaterSticky.push({ ...alert, firstSeen: now });
+      stickyAlerts.push({
+        ...alert,
+        firstSeen: now,
+        stickyDurationMs: STICKY_DURATION_MS[alert.region],
+      });
     }
   }
 
-  stickyAlerts[theater] = theaterSticky.filter((alert) => now - alert.firstSeen < STICKY_DURATION_MS[theater]);
+  stickyAlerts = stickyAlerts.filter((alert) => now - alert.firstSeen < alert.stickyDurationMs);
 
-  const allAlerts = stickyAlerts[theater].map((alert) => ({
+  const allAlerts = stickyAlerts.map((alert) => ({
     ...alert,
     active: fetched.alerts.some((live) =>
-      live.threatOriginal === alert.threatOriginal
+      live.region === alert.region
+      && live.threatOriginal === alert.threatOriginal
       && live.locationsOriginal.join() === alert.locationsOriginal.join(),
     ),
   }));
@@ -212,18 +254,6 @@ interface TzevaAdomAlert {
   data?: string;
   threat?: string;
   cities?: string[];
-}
-
-interface AlertEvent {
-  id: string;
-  time: string;
-  type: string;
-  threat: string;
-  threatOriginal: string;
-  locations: string[];
-  locationsOriginal: string[];
-  source: string;
-  active: boolean;
 }
 
 function categorizeAlert(threat: string): string {

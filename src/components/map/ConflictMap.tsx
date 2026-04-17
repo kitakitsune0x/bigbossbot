@@ -50,6 +50,7 @@ interface AlertData {
     threat: string;
     locations: string[];
     time: string;
+    region?: 'middle-east' | 'ukraine';
   }[];
 }
 
@@ -250,7 +251,6 @@ export default function ConflictMap({ className }: MapProps) {
 
   const mapPreferences = preferences.uiState.conflictMap[theater];
   const {
-    mapMode,
     showMilAir,
     showNaval,
     showCities,
@@ -258,7 +258,7 @@ export default function ConflictMap({ className }: MapProps) {
     showRangeRings,
     measureMode,
   } = mapPreferences;
-  const showDeepStateMap = theater === 'ukraine' && mapMode === 'deepstate';
+  const showDeepStateMap = false;
   const showLeafletMap = !showDeepStateMap;
 
   const updateMapPreferences = useCallback(async (next: Partial<typeof mapPreferences>) => {
@@ -682,17 +682,6 @@ export default function ConflictMap({ className }: MapProps) {
       if (!wasActive) {
         alertLayerRef.current.clearLayers();
       }
-      const alertCircle = L.circle([31.5, 34.8], {
-        radius: 150000, color: '#ff3366', fillColor: '#ff3366', fillOpacity: 0.15,
-        weight: 2, dashArray: '5, 10', className: 'alert-flash',
-      });
-      alertCircle.bindPopup(`
-        <div style="font-family:monospace;font-size:11px;color:#000;">
-          <strong style="color:red">ACTIVE ALERTS</strong><br/>
-          ${alerts.alerts.map(a => `${a.type}: ${a.threat}`).join('<br/>')}
-        </div>
-      `);
-      alertLayerRef.current.addLayer(alertCircle);
 
       alerts.alerts.forEach(alert => {
         alert.locations.forEach(loc => {
@@ -710,41 +699,38 @@ export default function ConflictMap({ className }: MapProps) {
 
       // Draw missile arcs on NEW alerts — only to specific alert cities
       if (prevAlertStatusRef.current !== 'ACTIVE') {
-        const alertType = alerts.alerts[0]?.type || '';
-        const threatText = alerts.alerts.map((a) => `${a.type} ${a.threat}`.toLowerCase()).join(' ');
-        const origin: [number, number] = theater === 'ukraine'
-          ? threatText.includes('crimea') || threatText.includes('black sea')
-            ? [45.3, 34.2]
-            : [50.6, 36.6]
-          : alertType === 'MISSILE' || threatText.includes('iran') || threatText.includes('ballistic')
-            ? [33.5, 48.0]
-            : threatText.includes('lebanon') || threatText.includes('hezbollah')
-              ? [33.89, 35.5]
-              : [33.5, 48.0];
+        const seenTargets = new Set<string>();
+        const targetArcs: Array<{ coords: [number, number]; origin: [number, number] }> = [];
 
-        // Collect all unique alert city coordinates
-        const targetCoords: [number, number][] = [];
-        const seenCoords = new Set<string>();
-        alerts.alerts.forEach(alert => {
-          alert.locations.forEach(loc => {
+        alerts.alerts.forEach((alert) => {
+          const threatText = `${alert.type} ${alert.threat}`.toLowerCase();
+          const origin: [number, number] = alert.region === 'ukraine'
+            ? (threatText.includes('crimea') || threatText.includes('black sea') ? [45.3, 34.2] : [50.6, 36.6])
+            : (alert.type === 'MISSILE' || threatText.includes('iran') || threatText.includes('ballistic'))
+                ? [33.5, 48.0]
+                : (threatText.includes('lebanon') || threatText.includes('hezbollah'))
+                    ? [33.89, 35.5]
+                    : [33.5, 48.0];
+
+          alert.locations.forEach((loc) => {
             const coords = theaterConfig.alertCities[loc.toLowerCase().trim()];
-            if (coords) {
-              const key = `${coords[0]},${coords[1]}`;
-              if (!seenCoords.has(key)) {
-                seenCoords.add(key);
-                targetCoords.push(coords);
-              }
+            if (!coords) {
+              return;
+            }
+
+            const key = `${origin[0]},${origin[1]}:${coords[0]},${coords[1]}`;
+            if (!seenTargets.has(key)) {
+              seenTargets.add(key);
+              targetArcs.push({ coords, origin });
             }
           });
         });
 
-        // If no specific cities found, fall back to the theater center
-        if (targetCoords.length === 0) {
-          targetCoords.push(theaterConfig.center);
+        if (targetArcs.length === 0) {
+          targetArcs.push({ coords: theaterConfig.center, origin: theaterConfig.center });
         }
 
-        // Draw one arc per target city
-        targetCoords.forEach((coords, i) => {
+        targetArcs.forEach(({ coords, origin }, i) => {
           setTimeout(() => {
             if (alertLayerRef.current) {
               const c = drawMissileArc(mapRef.current!, origin, coords, '#ff3366', alertLayerRef.current);
@@ -897,38 +883,6 @@ export default function ConflictMap({ className }: MapProps) {
       <div className="relative z-10 flex items-center justify-between border-b border-border bg-card pl-6 pr-3 py-1.5 shrink-0">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-foreground">Map</span>
         <div className="flex items-center gap-1 flex-wrap justify-end">
-          {theater === 'ukraine' && (
-            <>
-              <button
-                onClick={() => { void updateMapPreferences({ mapMode: 'default', measureMode: false }); }}
-                className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${
-                  mapMode === 'default'
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                Default
-              </button>
-              <button
-                onClick={() => { void updateMapPreferences({ mapMode: 'deepstate', measureMode: false }); }}
-                className={`text-[10px] px-2 py-0.5 rounded-md border transition-colors ${
-                  mapMode === 'deepstate'
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                DeepState
-              </button>
-              <a
-                href={DEEP_STATE_MAP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] px-2 py-0.5 rounded-md border border-sky-500/40 bg-sky-500/10 text-sky-300 transition-colors hover:bg-sky-500/20"
-              >
-                Open DeepState
-              </a>
-            </>
-          )}
           {showLeafletMap && (
             [
               { label: `Air ${flights?.military || 0}`, active: showMilAir, toggle: () => { void updateMapPreferences({ showMilAir: !showMilAir }); } },

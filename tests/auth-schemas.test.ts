@@ -46,9 +46,14 @@ test('preferencesPatchSchema rejects empty updates and unknown panel ids', () =>
   );
   assert.equal(
     preferencesPatchSchema.safeParse({
+      workspaceId: 'global',
+      dashboardLayouts: {
+        global: ['news', 'map'],
+      },
       uiState: {
         conflictMap: {
-          'middle-east': {
+          global: {
+            mapMode: 'default',
             showMilAir: true,
             showNaval: true,
             showCities: true,
@@ -56,18 +61,9 @@ test('preferencesPatchSchema rejects empty updates and unknown panel ids', () =>
             showRangeRings: false,
             measureMode: false,
           },
-          ukraine: {
-            showMilAir: false,
-            showNaval: false,
-            showCities: true,
-            showStrikes: true,
-            showRangeRings: false,
-            measureMode: false,
-          },
         },
         regionalAlertsCollapsed: {
-          'middle-east': ['Israel'],
-          ukraine: ['Ukraine'],
+          global: ['Israel', 'Ukraine'],
         },
       },
     }).success,
@@ -84,4 +80,6 @@ test('adminUserUpdateSchema requires at least one change', () => {
 test('apiTokenCreateSchema enforces a readable token label', () => {
   assert.equal(apiTokenCreateSchema.safeParse({ name: 'A' }).success, false);
   assert.equal(apiTokenCreateSchema.safeParse({ name: 'Codex MCP' }).success, true);
+  assert.equal(apiTokenCreateSchema.safeParse({ name: 'Network Reader', scope: 'read_network' }).success, true);
+  assert.equal(apiTokenCreateSchema.safeParse({ name: 'Network Writer', scope: 'use_network' }).success, true);
 });
