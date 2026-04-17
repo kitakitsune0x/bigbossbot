@@ -1,0 +1,32 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+.coverage
+.git/
+node_modules/
+cctv.db
+*.sqlite
+*.db
+
+# Debug/log files
+*.txt
+!requirements.txt
+!requirements-dev.txt
+*.html
+*.xlsx
+
+# Debug/cache JSON (keep package*.json and data files)
+ais_cache.json
+carrier_cache.json
+carrier_positions.json
+dump.json
+debug_fast.json
+nyc_full.json
+nyc_sample.json
+tmp_fast.json
+
+# Test files (not needed in production image)
+test_*.py
+tests/

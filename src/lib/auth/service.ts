@@ -41,12 +41,15 @@ import {
   createDefaultUserPreferences,
   type ApiTokenSummary,
   type AdminUserSummary,
+  type ApiTokenScope,
+  type DashboardLayouts,
   type DashboardUiState,
   type SessionContext,
   type UserPreferences,
   type UserSessionSummary,
 } from '@/types/auth';
-import { parseTheater } from '@/lib/theater';
+import { DEFAULT_THEATER, parseTheater } from '@/lib/theater';
+import { parseWorkspace } from '@/lib/workspaces';
 
 type AuditMeta = {
   userId?: string | null;
@@ -68,10 +71,8 @@ export type ApiTokenAccessContext = {
   authMethod: 'api-token';
   apiTokenId: string;
   apiTokenName: string;
-  apiTokenScope: 'read_intel';
+  apiTokenScope: ApiTokenScope;
 };
-
-const API_TOKEN_SCOPE = 'read_intel' as const;
 
 function authServiceUnavailableResult() {
   return {
@@ -81,8 +82,8 @@ function authServiceUnavailableResult() {
   };
 }
 
-function createApiTokenValue() {
-  return `bb_${API_TOKEN_SCOPE}_${createOpaqueToken(24)}`;
+function createApiTokenValue(scope: ApiTokenScope) {
+  return `bb_${scope}_${createOpaqueToken(24)}`;
 }
 
 function getApiTokenPrefix(token: string) {
@@ -150,14 +151,42 @@ function parseDashboardUiState(value: unknown): DashboardUiState {
 
   return {
     conflictMap: {
-      'middle-east': parseConflictMapPreferences(conflictMapRecord['middle-east']),
-      ukraine: parseConflictMapPreferences(conflictMapRecord.ukraine),
+      global: parseConflictMapPreferences(
+        conflictMapRecord.global
+          ?? conflictMapRecord['middle-east']
+          ?? conflictMapRecord.ukraine,
+      ),
     },
     regionalAlertsCollapsed: {
-      'middle-east': parseHiddenPanels(regionalCollapsedRecord['middle-east']),
-      ukraine: parseHiddenPanels(regionalCollapsedRecord.ukraine),
+      global: Array.from(
+        new Set([
+          ...parseHiddenPanels(regionalCollapsedRecord.global),
+          ...parseHiddenPanels(regionalCollapsedRecord['middle-east']),
+          ...parseHiddenPanels(regionalCollapsedRecord.ukraine),
+        ]),
+      ),
     },
   };
+}
+
+function parseDashboardLayouts(value: unknown): DashboardLayouts {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { ...DEFAULT_USER_PREFERENCES.dashboardLayouts };
+  }
+
+  const layouts: DashboardLayouts = {};
+
+  for (const [workspaceId, panelIds] of Object.entries(value as Record<string, unknown>)) {
+    const parsedWorkspace = parseWorkspace(workspaceId);
+    const nextPanelOrder = parsePanelOrder(panelIds);
+    const currentPanelOrder = layouts[parsedWorkspace] ?? [];
+
+    layouts[parsedWorkspace] = Array.from(
+      new Set([...currentPanelOrder, ...nextPanelOrder]),
+    );
+  }
+
+  return layouts;
 }
 
 function mapPreferences(record: {
@@ -172,12 +201,19 @@ function mapPreferences(record: {
     return createDefaultUserPreferences();
   }
 
+  const uiStateRecord =
+    record.uiState && typeof record.uiState === 'object' && !Array.isArray(record.uiState)
+      ? (record.uiState as Record<string, unknown>)
+      : {};
+
   return {
     alertSoundEnabled: record.alertSoundEnabled,
     desktopNotificationsEnabled: record.desktopNotificationsEnabled,
     hiddenPanels: parseHiddenPanels(record.hiddenPanels),
     panelOrder: parsePanelOrder(record.panelOrder),
     theater: parseTheater((record as Record<string, unknown>).theater),
+    workspaceId: parseWorkspace(uiStateRecord.workspaceId ?? (record as Record<string, unknown>).theater),
+    dashboardLayouts: parseDashboardLayouts(uiStateRecord.dashboardLayouts),
     uiState: parseDashboardUiState((record as Record<string, unknown>).uiState),
   };
 }
@@ -208,7 +244,7 @@ function mapApiTokenSummary(record: {
   id: string;
   name: string;
   tokenPrefix: string;
-  scope: 'read_intel';
+  scope: ApiTokenScope;
   lastUsedAt: Date | null;
   revokedAt: Date | null;
   createdAt: Date;
@@ -472,6 +508,28 @@ export async function updateUserPreferences(userId: string, input: Partial<UserP
   cacheDelete(`prefs:${userId}`);
 
   const prisma = getPrisma();
+  const existing = await prisma.userPreference.findUnique({
+    where: { userId },
+    select: {
+      alertSoundEnabled: true,
+      desktopNotificationsEnabled: true,
+      hiddenPanels: true,
+      panelOrder: true,
+      theater: true,
+      uiState: true,
+    },
+  });
+
+  const current = mapPreferences(existing);
+  const nextWorkspaceId = input.workspaceId ?? current.workspaceId;
+  const nextTheater = input.theater ?? current.theater ?? DEFAULT_THEATER;
+  const nextUiState = {
+    ...current.uiState,
+    ...(input.uiState ?? {}),
+    workspaceId: nextWorkspaceId,
+    dashboardLayouts: input.dashboardLayouts ?? current.dashboardLayouts,
+  };
+
   const preferences = await prisma.userPreference.upsert({
     where: { userId },
     update: {
@@ -481,8 +539,12 @@ export async function updateUserPreferences(userId: string, input: Partial<UserP
         : {}),
       ...(input.hiddenPanels ? { hiddenPanels: input.hiddenPanels } : {}),
       ...(input.panelOrder ? { panelOrder: input.panelOrder } : {}),
-      ...(input.theater ? { theater: input.theater } : {}),
-      ...(input.uiState ? { uiState: input.uiState as unknown as Prisma.InputJsonValue } : {}),
+      ...(input.theater || input.workspaceId ? { theater: nextTheater } : {}),
+      ...((input.uiState || input.workspaceId || input.dashboardLayouts)
+        ? {
+            uiState: nextUiState as unknown as Prisma.InputJsonValue,
+          }
+        : {}),
     },
     create: {
       userId,
@@ -491,8 +553,12 @@ export async function updateUserPreferences(userId: string, input: Partial<UserP
         input.desktopNotificationsEnabled ?? DEFAULT_USER_PREFERENCES.desktopNotificationsEnabled,
       hiddenPanels: input.hiddenPanels ?? DEFAULT_USER_PREFERENCES.hiddenPanels,
       panelOrder: input.panelOrder ?? DEFAULT_USER_PREFERENCES.panelOrder,
-      theater: input.theater ?? DEFAULT_USER_PREFERENCES.theater,
-      uiState: (input.uiState ?? createDefaultDashboardUiState()) as unknown as Prisma.InputJsonValue,
+      theater: nextTheater,
+      uiState: {
+        ...(input.uiState ?? createDefaultDashboardUiState()),
+        workspaceId: nextWorkspaceId,
+        dashboardLayouts: input.dashboardLayouts ?? DEFAULT_USER_PREFERENCES.dashboardLayouts,
+      } as unknown as Prisma.InputJsonValue,
     },
   });
 
@@ -1141,7 +1207,7 @@ export async function listUserApiTokens(userId: string): Promise<ApiTokenSummary
   return tokens.map(mapApiTokenSummary);
 }
 
-export async function createUserApiToken(userId: string, name: string) {
+export async function createUserApiToken(userId: string, name: string, scope: ApiTokenScope = 'read_intel') {
   const prisma = getPrisma();
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -1159,14 +1225,14 @@ export async function createUserApiToken(userId: string, name: string) {
     };
   }
 
-  const token = createApiTokenValue();
+  const token = createApiTokenValue(scope);
   const created = await prisma.apiToken.create({
     data: {
       userId,
       name: name.trim(),
       tokenHash: hashToken(token),
       tokenPrefix: getApiTokenPrefix(token),
-      scope: API_TOKEN_SCOPE,
+      scope,
     },
     select: {
       id: true,

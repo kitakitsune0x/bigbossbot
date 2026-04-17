@@ -1,0 +1,122 @@
+{
+  "319225400": {
+    "name": "KORU",
+    "owner": "Jeff Bezos",
+    "builder": "Oceanco",
+    "length_m": 127,
+    "year": 2023,
+    "category": "Tech Billionaire",
+    "flag": "Cayman Islands",
+    "link": "https://en.wikipedia.org/wiki/Koru_(yacht)"
+  },
+  "538072122": {
+    "name": "LAUNCHPAD",
+    "owner": "Mark Zuckerberg",
+    "builder": "Feadship",
+    "length_m": 118,
+    "year": 2024,
+    "category": "Tech Billionaire",
+    "flag": "Marshall Islands",
+    "link": "https://www.superyachtfan.com/yacht/launchpad/"
+  },
+  "319032600": {
+    "name": "MUSASHI",
+    "owner": "Larry Ellison",
+    "builder": "Feadship",
+    "length_m": 88,
+    "year": 2011,
+    "category": "Tech Billionaire",
+    "flag": "Cayman Islands",
+    "link": "https://en.wikipedia.org/wiki/Musashi_(yacht)"
+  },
+  "319011000": {
+    "name": "RISING SUN",
+    "owner": "David Geffen",
+    "builder": "Lurssen",
+    "length_m": 138,
+    "year": 2004,
+    "category": "Celebrity / Mogul",
+    "flag": "Cayman Islands",
+    "link": "https://en.wikipedia.org/wiki/Rising_Sun_(yacht)"
+  },
+  "310593000": {
+    "name": "ECLIPSE",
+    "owner": "Roman Abramovich",
+    "builder": "Blohm+Voss",
+    "length_m": 162,
+    "year": 2010,
+    "category": "Oligarch Watch",
+    "flag": "Bermuda",
+    "link": "https://en.wikipedia.org/wiki/Eclipse_(yacht)"
+  },
+  "310792000": {
+    "name": "SOLARIS",
+    "owner": "Roman Abramovich",
+    "builder": "Lloyd Werft",
+    "length_m": 140,
+    "year": 2021,
+    "category": "Oligarch Watch",
+    "flag": "Bermuda",
+    "link": "https://en.wikipedia.org/wiki/Solaris_(yacht)"
+  },
+  "319094900": {
+    "name": "DILBAR",
+    "owner": "Alisher Usmanov (seized)",
+    "builder": "Lurssen",
+    "length_m": 156,
+    "year": 2016,
+    "category": "Oligarch Watch",
+    "flag": "Cayman Islands",
+    "link": "https://en.wikipedia.org/wiki/Dilbar_(yacht)"
+  },
+  "273610820": {
+    "name": "NORD",
+    "owner": "Alexei Mordashov",
+    "builder": "Lurssen",
+    "length_m": 142,
+    "year": 2021,
+    "category": "Oligarch Watch",
+    "flag": "Russia",
+    "link": "https://en.wikipedia.org/wiki/Nord_(yacht)"
+  },
+  "319179200": {
+    "name": "SCHEHERAZADE",
+    "owner": "Eduard Khudainatov (alleged Putin)",
+    "builder": "Lurssen",
+    "length_m": 140,
+    "year": 2020,
+    "category": "Oligarch Watch",
+    "flag": "Cayman Islands",
+    "link": "https://en.wikipedia.org/wiki/Scheherazade_(yacht)"
+  },
+  "319112900": {
+    "name": "AMADEA",
+    "owner": "Suleiman Kerimov (seized by US DOJ)",
+    "builder": "Lurssen",
+    "length_m": 106,
+    "year": 2017,
+    "category": "Oligarch Watch",
+    "flag": "Cayman Islands",
+    "link": "https://en.wikipedia.org/wiki/Amadea_(yacht)"
+  },
+  "319156800": {
+    "name": "BRAVO EUGENIA",
+    "owner": "Jerry Jones",
+    "builder": "Oceanco",
+    "length_m": 109,
+    "year": 2018,
+    "category": "Celebrity / Mogul",
+    "flag": "Cayman Islands",
+    "link": "https://www.superyachtfan.com/yacht/bravo-eugenia/"
+  },
+  "319137200": {
+    "name": "LADY S",
+    "owner": "Dan Snyder",
+    "builder": "Feadship",
+    "length_m": 93,
+    "year": 2019,
+    "category": "Celebrity / Mogul",
+    "flag": "Cayman Islands",
+    "link": "https://www.superyachtfan.com/yacht/lady-s/"
+  }
+}

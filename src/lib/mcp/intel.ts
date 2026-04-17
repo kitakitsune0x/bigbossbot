@@ -1,42 +1,19 @@
-import { parseTheater, type TheaterId } from '@/lib/theater';
+import {
+  INTEL_FEEDS,
+  INTEL_SEARCHABLE_FEEDS,
+  getDefaultSnapshotFeeds,
+  getIntelFeedConfig,
+  normalizeIntelFeedList,
+  normalizeSearchableIntelFeedList,
+  parseIntelFeed,
+  type IntelFeed,
+  type SearchableIntelFeed,
+} from '@/lib/intel/catalog';
+import { DEFAULT_WORKSPACE, parseWorkspace, type WorkspaceId } from '@/lib/workspaces';
 
-export const BIG_BOSS_MCP_FEEDS = [
-  'news',
-  'alerts',
-  'conflicts',
-  'strikes',
-  'telegram',
-  'regional-alerts',
-  'flights',
-  'ships',
-  'markets',
-  'crypto',
-  'oil',
-  'polymarket',
-  'fires',
-] as const;
-
-export const BIG_BOSS_MCP_SEARCHABLE_FEEDS = [
-  'news',
-  'alerts',
-  'conflicts',
-  'strikes',
-  'telegram',
-  'regional-alerts',
-] as const;
-
-export const BIG_BOSS_MCP_DEFAULT_SNAPSHOT_FEEDS = [
-  'news',
-  'alerts',
-  'conflicts',
-  'strikes',
-  'telegram',
-  'regional-alerts',
-  'flights',
-] as const;
-
-export type BigBossMcpFeed = (typeof BIG_BOSS_MCP_FEEDS)[number];
-export type BigBossSearchableFeed = (typeof BIG_BOSS_MCP_SEARCHABLE_FEEDS)[number];
+export const BIG_BOSS_MCP_FEEDS = INTEL_FEEDS;
+export const BIG_BOSS_MCP_SEARCHABLE_FEEDS = INTEL_SEARCHABLE_FEEDS;
+export const BIG_BOSS_MCP_DEFAULT_SNAPSHOT_FEEDS = getDefaultSnapshotFeeds(DEFAULT_WORKSPACE);
 
 type FeedMeta = Record<string, unknown>;
 
@@ -46,8 +23,9 @@ type FeedNormalization = {
 };
 
 export type BigBossFeedResult = {
-  feed: BigBossMcpFeed;
-  theater: TheaterId;
+  feed: IntelFeed;
+  workspace: WorkspaceId;
+  legacyTheater: null;
   endpoint: string;
   fetchedAt: string;
   itemCount: number;
@@ -57,14 +35,15 @@ export type BigBossFeedResult = {
 };
 
 export type BigBossSnapshotResult = {
-  theater: TheaterId;
-  includedFeeds: BigBossMcpFeed[];
+  workspace: WorkspaceId;
+  legacyTheater: null;
+  includedFeeds: IntelFeed[];
   fetchedAt: string;
   feeds: Record<string, BigBossFeedResult>;
 };
 
 export type BigBossSearchResult = {
-  feed: BigBossSearchableFeed;
+  feed: SearchableIntelFeed;
   title: string;
   snippet: string;
   source: string | null;
@@ -76,17 +55,46 @@ export type BigBossSearchResult = {
 
 export type BigBossSearchResponse = {
   query: string;
-  theater: TheaterId;
-  feedsSearched: BigBossSearchableFeed[];
+  workspace: WorkspaceId;
+  legacyTheater: null;
+  feedsSearched: SearchableIntelFeed[];
   fetchedAt: string;
   resultCount: number;
   results: BigBossSearchResult[];
 };
 
-type FeedConfig = {
-  path: string;
-  snapshotLimit: number;
-  normalize: (payload: unknown) => FeedNormalization;
+export type BigBossWorkspaceSummary = {
+  id: WorkspaceId;
+  label: string;
+  kind: string;
+  public: boolean;
+  defaultMapView: {
+    center: [number, number];
+    zoom: number;
+  };
+  enabledPanels: string[];
+  filterPreset: string;
+};
+
+export type BigBossWorkspaceList = {
+  fetchedAt: string;
+  workspaces: BigBossWorkspaceSummary[];
+};
+
+export type BigBossMapEntitiesResult = {
+  workspace: WorkspaceId;
+  legacyTheater: null;
+  endpoint: string;
+  fetchedAt: string;
+  updated: string | null;
+  entities: Record<string, unknown[]>;
+  entityCounts: Record<string, number>;
+};
+
+export type BigBossNetworkStatusResult = {
+  endpoint: string;
+  fetchedAt: string;
+  status: unknown;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -114,15 +122,11 @@ function normalizeObjectArrayPayload(payload: unknown): FeedNormalization {
   };
 }
 
-const FEED_CONFIG: Record<BigBossMcpFeed, FeedConfig> = {
+const FEED_CONFIG: Record<IntelFeed, { normalize: (payload: unknown) => FeedNormalization }> = {
   news: {
-    path: '/api/news',
-    snapshotLimit: 12,
     normalize: normalizeObjectArrayPayload,
   },
   alerts: {
-    path: '/api/alerts',
-    snapshotLimit: 12,
     normalize(payload) {
       const record = isRecord(payload) ? payload : {};
       return {
@@ -137,18 +141,12 @@ const FEED_CONFIG: Record<BigBossMcpFeed, FeedConfig> = {
     },
   },
   conflicts: {
-    path: '/api/conflicts',
-    snapshotLimit: 15,
     normalize: normalizeObjectArrayPayload,
   },
   strikes: {
-    path: '/api/strikes',
-    snapshotLimit: 12,
     normalize: normalizeObjectArrayPayload,
   },
   telegram: {
-    path: '/api/telegram',
-    snapshotLimit: 18,
     normalize(payload) {
       const record = isRecord(payload) ? payload : {};
       return {
@@ -161,8 +159,6 @@ const FEED_CONFIG: Record<BigBossMcpFeed, FeedConfig> = {
     },
   },
   'regional-alerts': {
-    path: '/api/regional-alerts',
-    snapshotLimit: 12,
     normalize(payload) {
       const record = isRecord(payload) ? payload : {};
       return {
@@ -174,8 +170,6 @@ const FEED_CONFIG: Record<BigBossMcpFeed, FeedConfig> = {
     },
   },
   flights: {
-    path: '/api/flights',
-    snapshotLimit: 20,
     normalize(payload) {
       const record = isRecord(payload) ? payload : {};
       return {
@@ -190,8 +184,6 @@ const FEED_CONFIG: Record<BigBossMcpFeed, FeedConfig> = {
     },
   },
   ships: {
-    path: '/api/ships',
-    snapshotLimit: 16,
     normalize(payload) {
       const record = isRecord(payload) ? payload : {};
       return {
@@ -207,23 +199,15 @@ const FEED_CONFIG: Record<BigBossMcpFeed, FeedConfig> = {
     },
   },
   markets: {
-    path: '/api/markets',
-    snapshotLimit: 20,
     normalize: normalizeObjectArrayPayload,
   },
   crypto: {
-    path: '/api/crypto',
-    snapshotLimit: 10,
     normalize: normalizeObjectArrayPayload,
   },
   oil: {
-    path: '/api/oil',
-    snapshotLimit: 10,
     normalize: normalizeObjectArrayPayload,
   },
   polymarket: {
-    path: '/api/polymarket',
-    snapshotLimit: 12,
     normalize(payload) {
       const record = isRecord(payload) ? payload : {};
       return {
@@ -237,8 +221,6 @@ const FEED_CONFIG: Record<BigBossMcpFeed, FeedConfig> = {
     },
   },
   fires: {
-    path: '/api/fires',
-    snapshotLimit: 20,
     normalize(payload) {
       const record = isRecord(payload) ? payload : {};
       return {
@@ -255,36 +237,65 @@ const FEED_CONFIG: Record<BigBossMcpFeed, FeedConfig> = {
       };
     },
   },
+  satellites: {
+    normalize(payload) {
+      const record = isRecord(payload) ? payload : {};
+      return {
+        items: asArray(record.items),
+        meta: stripUndefined({
+          count: record.count,
+          source: record.source,
+          updated: record.updated,
+        }),
+      };
+    },
+  },
+  earthquakes: {
+    normalize(payload) {
+      const record = isRecord(payload) ? payload : {};
+      return {
+        items: asArray(record.items),
+        meta: stripUndefined({
+          count: record.count,
+          updated: record.updated,
+        }),
+      };
+    },
+  },
+  'internet-outages': {
+    normalize(payload) {
+      const record = isRecord(payload) ? payload : {};
+      return {
+        items: asArray(record.items),
+        meta: stripUndefined({
+          count: record.count,
+          updated: record.updated,
+        }),
+      };
+    },
+  },
+  sigint: {
+    normalize(payload) {
+      const record = isRecord(payload) ? payload : {};
+      return {
+        items: asArray(record.items),
+        meta: stripUndefined({
+          count: record.count,
+          totals: record.totals,
+          updated: record.updated,
+        }),
+      };
+    },
+  },
 };
 
-function ensureFeed(value: string): BigBossMcpFeed {
-  if ((BIG_BOSS_MCP_FEEDS as readonly string[]).includes(value)) {
-    return value as BigBossMcpFeed;
-  }
-
-  throw new Error(
-    `Unsupported feed "${value}". Supported feeds: ${BIG_BOSS_MCP_FEEDS.join(', ')}`,
-  );
+function resolveWorkspaceId(value: { workspace?: string; theater?: string }) {
+  return parseWorkspace(value.workspace ?? value.theater);
 }
 
-function ensureSearchableFeed(value: string): BigBossSearchableFeed {
-  if ((BIG_BOSS_MCP_SEARCHABLE_FEEDS as readonly string[]).includes(value)) {
-    return value as BigBossSearchableFeed;
-  }
-
-  throw new Error(
-    `Unsupported searchable feed "${value}". Searchable feeds: ${BIG_BOSS_MCP_SEARCHABLE_FEEDS.join(', ')}`,
-  );
-}
-
-function normalizeFeedList(values: readonly string[] | undefined, fallback: readonly BigBossMcpFeed[]) {
-  const list = values && values.length > 0 ? values : fallback;
-  return Array.from(new Set(list.map(ensureFeed)));
-}
-
-function normalizeSearchableFeedList(values: readonly string[] | undefined) {
-  const list = values && values.length > 0 ? values : BIG_BOSS_MCP_SEARCHABLE_FEEDS;
-  return Array.from(new Set(list.map(ensureSearchableFeed)));
+function legacyTheaterForWorkspace(workspace: WorkspaceId) {
+  void workspace;
+  return null;
 }
 
 function ensureBaseUrl(baseUrl: string) {
@@ -295,10 +306,20 @@ function ensureBaseUrl(baseUrl: string) {
   }
 }
 
-function buildFeedUrl(baseUrl: string, feed: BigBossMcpFeed, theater: TheaterId) {
-  const url = new URL(FEED_CONFIG[feed].path, ensureBaseUrl(baseUrl));
-  url.searchParams.set('theater', theater);
+function buildCanonicalUrl(baseUrl: string, path: string, searchParams?: URLSearchParams) {
+  const url = new URL(path, ensureBaseUrl(baseUrl));
+  searchParams?.forEach((value, key) => url.searchParams.set(key, value));
   return url;
+}
+
+function normalizeMapCenter(value: unknown): [number, number] {
+  if (Array.isArray(value) && value.length >= 2) {
+    const lat = typeof value[0] === 'number' ? value[0] : 0;
+    const lon = typeof value[1] === 'number' ? value[1] : 0;
+    return [lat, lon];
+  }
+
+  return [0, 0];
 }
 
 async function parseJsonResponse(response: Response) {
@@ -309,8 +330,13 @@ async function parseJsonResponse(response: Response) {
   }
 }
 
-async function fetchFeedPayload(baseUrl: string, apiToken: string, feed: BigBossMcpFeed, theater: TheaterId) {
-  const url = buildFeedUrl(baseUrl, feed, theater);
+async function fetchBigBossJson(
+  baseUrl: string,
+  apiToken: string,
+  path: string,
+  searchParams?: URLSearchParams,
+) {
+  const url = buildCanonicalUrl(baseUrl, path, searchParams);
   let response: Response;
 
   try {
@@ -318,7 +344,7 @@ async function fetchFeedPayload(baseUrl: string, apiToken: string, feed: BigBoss
       headers: {
         Accept: 'application/json',
         Authorization: `Bearer ${apiToken}`,
-        'User-Agent': 'BIG-BOSS-BOT MCP/1.0',
+        'User-Agent': 'BIG-BOSS-BOT MCP/2.0',
       },
       cache: 'no-store',
     });
@@ -330,17 +356,32 @@ async function fetchFeedPayload(baseUrl: string, apiToken: string, feed: BigBoss
     );
   }
 
+  const payload = await parseJsonResponse(response);
+
   if (!response.ok) {
+    const detail =
+      payload && typeof payload === 'object' && !Array.isArray(payload)
+        ? ((payload as Record<string, unknown>).error ?? (payload as Record<string, unknown>).detail)
+        : payload;
+
     if (response.status === 401 || response.status === 403) {
-      throw new Error('BIG BOSS BOT rejected the API token. Check BIG_BOSS_API_TOKEN and confirm the token is still active.');
+      throw new Error(
+        typeof detail === 'string'
+          ? detail
+          : 'BIG BOSS BOT rejected the API token. Confirm BIG_BOSS_API_TOKEN is active and has the required scope.',
+      );
     }
 
-    throw new Error(`BIG BOSS BOT feed "${feed}" failed with HTTP ${response.status}.`);
+    throw new Error(
+      typeof detail === 'string'
+        ? detail
+        : `BIG BOSS BOT request to ${url.pathname} failed with HTTP ${response.status}.`,
+    );
   }
 
   return {
     endpoint: url.toString(),
-    payload: await parseJsonResponse(response),
+    payload,
   };
 }
 
@@ -528,6 +569,30 @@ function buildSearchResults(feedResult: BigBossFeedResult, query: string, tokens
         }
       }
       break;
+    case 'sigint':
+      for (const item of feedResult.items) {
+        if (!isRecord(item)) continue;
+        const title = asString(item.name) ?? asString(item.id) ?? 'Signal event';
+        const type = asString(item.type);
+        const source = type;
+        const metadata = isRecord(item.metadata) ? item.metadata : {};
+        const timestamp = asString(metadata.updated) ?? asString(metadata.time);
+        const haystack = `${title} ${type ?? ''} ${JSON.stringify(metadata)}`.toLowerCase();
+        const score = scoreMatch(haystack, query, tokens);
+        if (score <= 0) continue;
+
+        results.push({
+          feed: 'sigint',
+          title,
+          snippet: type ?? 'Signal event',
+          source,
+          url: null,
+          timestamp,
+          score,
+          item,
+        });
+      }
+      break;
     default:
       break;
   }
@@ -535,24 +600,29 @@ function buildSearchResults(feedResult: BigBossFeedResult, query: string, tokens
   return results;
 }
 
-export async function getBigBossFeed(params: {
+function buildFeedUrl(baseUrl: string, feed: IntelFeed, workspace: WorkspaceId) {
+  const searchParams = new URLSearchParams({ workspace });
+  return buildCanonicalUrl(baseUrl, `/api/intel/feed/${feed}`, searchParams);
+}
+
+function normalizeFeedResponse(options: {
   baseUrl: string;
-  apiToken: string;
-  feed: BigBossMcpFeed;
-  theater: TheaterId | string;
+  workspace: WorkspaceId;
+  feed: IntelFeed;
+  payload: unknown;
+  endpoint?: string;
   limit?: number;
+  fetchedAt?: string;
 }) {
-  const theater = parseTheater(params.theater);
-  const { endpoint, payload } = await fetchFeedPayload(params.baseUrl, params.apiToken, params.feed, theater);
-  const config = FEED_CONFIG[params.feed];
-  const normalized = config.normalize(payload);
-  const items = limitItems(normalized.items, params.limit, normalized.items.length);
+  const normalized = FEED_CONFIG[options.feed].normalize(options.payload);
+  const items = limitItems(normalized.items, options.limit, normalized.items.length);
 
   return {
-    feed: params.feed,
-    theater,
-    endpoint,
-    fetchedAt: new Date().toISOString(),
+    feed: options.feed,
+    workspace: options.workspace,
+    legacyTheater: legacyTheaterForWorkspace(options.workspace),
+    endpoint: options.endpoint ?? buildFeedUrl(options.baseUrl, options.feed, options.workspace).toString(),
+    fetchedAt: options.fetchedAt ?? new Date().toISOString(),
     itemCount: items.length,
     totalItems: normalized.items.length,
     items,
@@ -560,31 +630,120 @@ export async function getBigBossFeed(params: {
   } satisfies BigBossFeedResult;
 }
 
+export async function listBigBossWorkspaces(params: {
+  baseUrl: string;
+  apiToken: string;
+}) {
+  const { payload } = await fetchBigBossJson(params.baseUrl, params.apiToken, '/api/intel/workspaces');
+  const record = isRecord(payload) ? payload : {};
+  const workspaces = asArray(record.workspaces).filter(isRecord).map((workspace) => ({
+    id: parseWorkspace(workspace.id),
+    label: asString(workspace.label) ?? parseWorkspace(workspace.id),
+    kind: asString(workspace.kind) ?? 'global',
+    public: workspace.public !== false,
+    defaultMapView: isRecord(workspace.defaultMapView)
+      ? {
+          center: normalizeMapCenter(workspace.defaultMapView.center),
+          zoom: typeof workspace.defaultMapView.zoom === 'number' ? workspace.defaultMapView.zoom : 2,
+        }
+      : {
+          center: [0, 0] as [number, number],
+          zoom: 2,
+        },
+    enabledPanels: asArray(workspace.enabledPanels).filter((value): value is string => typeof value === 'string'),
+    filterPreset: asString(workspace.filterPreset) ?? parseWorkspace(workspace.id),
+  }));
+
+  return {
+    fetchedAt: asString(record.fetchedAt) ?? new Date().toISOString(),
+    workspaces,
+  } satisfies BigBossWorkspaceList;
+}
+
+export async function getBigBossFeed(params: {
+  baseUrl: string;
+  apiToken: string;
+  feed: IntelFeed | string;
+  workspace?: WorkspaceId | string;
+  theater?: string;
+  limit?: number;
+}) {
+  const workspace = resolveWorkspaceId({
+    workspace: params.workspace,
+    theater: params.theater,
+  });
+  const feed = parseIntelFeed(params.feed);
+  const searchParams = new URLSearchParams({ workspace });
+  const { endpoint, payload } = await fetchBigBossJson(
+    params.baseUrl,
+    params.apiToken,
+    `/api/intel/feed/${feed}`,
+    searchParams,
+  );
+
+  return normalizeFeedResponse({
+    baseUrl: params.baseUrl,
+    workspace,
+    feed,
+    payload,
+    endpoint,
+    limit: params.limit,
+  });
+}
+
 export async function getBigBossSnapshot(params: {
   baseUrl: string;
   apiToken: string;
-  theater: TheaterId | string;
+  workspace?: WorkspaceId | string;
+  theater?: string;
   include?: readonly string[];
 }) {
-  const theater = parseTheater(params.theater);
-  const feeds = normalizeFeedList(params.include, BIG_BOSS_MCP_DEFAULT_SNAPSHOT_FEEDS);
-  const feedResults = await Promise.all(
-    feeds.map((feed) =>
-      getBigBossFeed({
-        baseUrl: params.baseUrl,
-        apiToken: params.apiToken,
-        theater,
-        feed,
-        limit: FEED_CONFIG[feed].snapshotLimit,
-      }),
-    ),
+  const workspace = resolveWorkspaceId({
+    workspace: params.workspace,
+    theater: params.theater,
+  });
+  const searchParams = new URLSearchParams({ workspace });
+  const include = normalizeIntelFeedList(params.include, getDefaultSnapshotFeeds(workspace));
+  if (include.length > 0) {
+    searchParams.set('include', include.join(','));
+  }
+
+  const { payload } = await fetchBigBossJson(
+    params.baseUrl,
+    params.apiToken,
+    '/api/intel/snapshot',
+    searchParams,
   );
 
+  const record = isRecord(payload) ? payload : {};
+  const snapshotWorkspace = parseWorkspace(record.workspace ?? workspace);
+  const fetchedAt = asString(record.fetchedAt) ?? new Date().toISOString();
+  const includedFeeds = normalizeIntelFeedList(
+    Array.isArray(record.includedFeeds)
+      ? record.includedFeeds.filter((value): value is string => typeof value === 'string')
+      : include,
+    getDefaultSnapshotFeeds(snapshotWorkspace),
+  );
+  const feedsRecord = isRecord(record.feeds) ? record.feeds : {};
+
   return {
-    theater,
-    includedFeeds: feeds,
-    fetchedAt: new Date().toISOString(),
-    feeds: Object.fromEntries(feedResults.map((result) => [result.feed, result])),
+    workspace: snapshotWorkspace,
+    legacyTheater: legacyTheaterForWorkspace(snapshotWorkspace),
+    includedFeeds,
+    fetchedAt,
+    feeds: Object.fromEntries(
+      includedFeeds.map((feed) => [
+        feed,
+        normalizeFeedResponse({
+          baseUrl: params.baseUrl,
+          workspace: snapshotWorkspace,
+          feed,
+          payload: feedsRecord[feed],
+          fetchedAt,
+          limit: getIntelFeedConfig(feed).snapshotLimit,
+        }),
+      ]),
+    ),
   } satisfies BigBossSnapshotResult;
 }
 
@@ -592,7 +751,8 @@ export async function searchBigBossIntel(params: {
   baseUrl: string;
   apiToken: string;
   query: string;
-  theater: TheaterId | string;
+  workspace?: WorkspaceId | string;
+  theater?: string;
   feeds?: readonly string[];
   limit?: number;
 }) {
@@ -601,8 +761,11 @@ export async function searchBigBossIntel(params: {
     throw new Error('Search query cannot be empty.');
   }
 
-  const theater = parseTheater(params.theater);
-  const feeds = normalizeSearchableFeedList(params.feeds);
+  const workspace = resolveWorkspaceId({
+    workspace: params.workspace,
+    theater: params.theater,
+  });
+  const feeds = normalizeSearchableIntelFeedList(workspace, params.feeds);
   const tokens = Array.from(new Set(queryText.split(/\s+/).filter(Boolean)));
   const limit = typeof params.limit === 'number' && Number.isFinite(params.limit)
     ? Math.max(1, Math.floor(params.limit))
@@ -613,7 +776,7 @@ export async function searchBigBossIntel(params: {
       getBigBossFeed({
         baseUrl: params.baseUrl,
         apiToken: params.apiToken,
-        theater,
+        workspace,
         feed,
       }),
     ),
@@ -632,10 +795,64 @@ export async function searchBigBossIntel(params: {
 
   return {
     query: params.query,
-    theater,
+    workspace,
+    legacyTheater: legacyTheaterForWorkspace(workspace),
     feedsSearched: feeds,
     fetchedAt: new Date().toISOString(),
     resultCount: results.length,
     results,
   } satisfies BigBossSearchResponse;
+}
+
+export async function getBigBossMapEntities(params: {
+  baseUrl: string;
+  apiToken: string;
+  workspace?: WorkspaceId | string;
+  theater?: string;
+}) {
+  const workspace = resolveWorkspaceId({
+    workspace: params.workspace,
+    theater: params.theater,
+  });
+  const { endpoint, payload } = await fetchBigBossJson(
+    params.baseUrl,
+    params.apiToken,
+    '/api/intel/map',
+    new URLSearchParams({ workspace }),
+  );
+
+  const record = isRecord(payload) ? payload : {};
+  const entitiesRecord = isRecord(record.entities) ? record.entities : {};
+  const entities = Object.fromEntries(
+    Object.entries(entitiesRecord).map(([key, value]) => [key, asArray(value)]),
+  );
+
+  return {
+    workspace: parseWorkspace(record.workspace ?? workspace),
+    legacyTheater: legacyTheaterForWorkspace(parseWorkspace(record.workspace ?? workspace)),
+    endpoint,
+    fetchedAt: new Date().toISOString(),
+    updated: asString(record.updated),
+    entities,
+    entityCounts: Object.fromEntries(
+      Object.entries(entities).map(([key, value]) => [key, Array.isArray(value) ? value.length : 0]),
+    ),
+  } satisfies BigBossMapEntitiesResult;
+}
+
+export async function getBigBossNetworkStatus(params: {
+  baseUrl: string;
+  apiToken: string;
+}) {
+  const { endpoint, payload } = await fetchBigBossJson(
+    params.baseUrl,
+    params.apiToken,
+    '/api/network/status',
+  );
+
+  return {
+    endpoint,
+    fetchedAt: new Date().toISOString(),
+    status: payload,
+  } satisfies BigBossNetworkStatusResult;
 }

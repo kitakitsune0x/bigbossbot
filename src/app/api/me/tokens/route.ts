@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await createUserApiToken(session.userId, parsed.data.name);
+  const result = await createUserApiToken(session.userId, parsed.data.name, parsed.data.scope);
   if (!result.ok) {
     return NextResponse.json({ error: result.message }, { status: 400 });
   }

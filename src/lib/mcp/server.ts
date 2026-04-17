@@ -6,11 +6,15 @@ import {
   BIG_BOSS_MCP_FEEDS,
   BIG_BOSS_MCP_SEARCHABLE_FEEDS,
   getBigBossFeed,
+  getBigBossMapEntities,
+  getBigBossNetworkStatus,
   getBigBossSnapshot,
+  listBigBossWorkspaces,
   searchBigBossIntel,
 } from '@/lib/mcp/intel';
 import { resolveBuildVersion } from '@/lib/build-version';
-import { THEATER_IDS, type TheaterId } from '@/lib/theater';
+import { LEGACY_THEATER_ALIASES } from '@/lib/theater';
+import { DEFAULT_WORKSPACE, WORKSPACE_IDS, parseWorkspace, type WorkspaceId } from '@/lib/workspaces';
 
 type JsonRpcId = string | number | null;
 
@@ -69,16 +73,30 @@ const SERVER_VERSION = resolveBuildVersion(
 
 const TOOL_DEFINITIONS = [
   {
+    name: 'list_workspaces',
+    description: 'List the BIG BOSS BOT workspaces currently available to this token, including public intel workspaces and network when permitted.',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {},
+    },
+  },
+  {
     name: 'get_snapshot',
-    description: 'Fetch a stitched BIG BOSS BOT situation snapshot for a theater, optionally narrowing the included feeds.',
+    description: 'Fetch a stitched BIG BOSS BOT situation snapshot for a workspace. Use `workspace`; `theater` remains supported as a legacy alias.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
       properties: {
+        workspace: {
+          type: 'string',
+          enum: [...WORKSPACE_IDS],
+          description: 'Workspace to query. Defaults to global when omitted.',
+        },
         theater: {
           type: 'string',
-          enum: [...THEATER_IDS],
-          description: 'The theater to query.',
+          enum: [...LEGACY_THEATER_ALIASES],
+          description: 'Legacy alias. `middle-east` and `ukraine` now resolve to `global`.',
         },
         include: {
           type: 'array',
@@ -89,12 +107,43 @@ const TOOL_DEFINITIONS = [
           },
         },
       },
-      required: ['theater'],
+    },
+  },
+  {
+    name: 'get_feed',
+    description: 'Fetch one BIG BOSS BOT feed directly.',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        feed: {
+          type: 'string',
+          enum: [...BIG_BOSS_MCP_FEEDS],
+          description: 'Feed name.',
+        },
+        workspace: {
+          type: 'string',
+          enum: [...WORKSPACE_IDS],
+          description: 'Workspace to query. Defaults to global when omitted.',
+        },
+        theater: {
+          type: 'string',
+          enum: [...LEGACY_THEATER_ALIASES],
+          description: 'Legacy alias. `middle-east` and `ukraine` now resolve to `global`.',
+        },
+        limit: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 100,
+          description: 'Optional number of items to keep from the feed response.',
+        },
+      },
+      required: ['feed'],
     },
   },
   {
     name: 'search_intel',
-    description: 'Search BIG BOSS BOT text-heavy feeds for matching news, alerts, telegram posts, conflicts, strikes, or regional watch events.',
+    description: 'Search BIG BOSS BOT text-heavy feeds for matching news, alerts, telegram posts, conflicts, strikes, regional watch events, and SIGINT records.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
@@ -104,10 +153,15 @@ const TOOL_DEFINITIONS = [
           minLength: 1,
           description: 'Search query.',
         },
+        workspace: {
+          type: 'string',
+          enum: [...WORKSPACE_IDS],
+          description: 'Workspace to query. Defaults to global when omitted.',
+        },
         theater: {
           type: 'string',
-          enum: [...THEATER_IDS],
-          description: 'The theater to query.',
+          enum: [...LEGACY_THEATER_ALIASES],
+          description: 'Legacy alias. `middle-east` and `ukraine` now resolve to `global`.',
         },
         feeds: {
           type: 'array',
@@ -124,48 +178,42 @@ const TOOL_DEFINITIONS = [
           description: 'Maximum number of matches to return.',
         },
       },
-      required: ['query', 'theater'],
+      required: ['query'],
     },
   },
   {
-    name: 'get_feed',
-    description: 'Fetch one BIG BOSS BOT feed directly.',
+    name: 'get_map_entities',
+    description: 'Fetch the normalized BIG BOSS BOT map entity bundle for a workspace.',
     inputSchema: {
       type: 'object',
       additionalProperties: false,
       properties: {
-        feed: {
+        workspace: {
           type: 'string',
-          enum: [...BIG_BOSS_MCP_FEEDS],
-          description: 'Feed name.',
+          enum: [...WORKSPACE_IDS],
+          description: 'Workspace to query. Defaults to global when omitted.',
         },
         theater: {
           type: 'string',
-          enum: [...THEATER_IDS],
-          description: 'The theater to query.',
-        },
-        limit: {
-          type: 'integer',
-          minimum: 1,
-          maximum: 100,
-          description: 'Optional number of items to keep from the feed response.',
+          enum: [...LEGACY_THEATER_ALIASES],
+          description: 'Legacy alias. `middle-east` and `ukraine` now resolve to `global`.',
         },
       },
-      required: ['feed', 'theater'],
+    },
+  },
+  {
+    name: 'get_network_status',
+    description: 'Fetch BIG BOSS BOT network status. Requires a token with read_network or use_network scope.',
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {},
     },
   },
 ] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function ensureTheater(value: unknown): TheaterId {
-  if (typeof value === 'string' && (THEATER_IDS as readonly string[]).includes(value)) {
-    return value as TheaterId;
-  }
-
-  throw new Error(`Invalid theater. Expected one of: ${THEATER_IDS.join(', ')}`);
 }
 
 function ensureFeed(value: unknown) {
@@ -218,6 +266,27 @@ function ensureOptionalLimit(value: unknown, max: number) {
   return value;
 }
 
+function ensureWorkspaceInput(input: Record<string, unknown>): WorkspaceId {
+  const raw = input.workspace ?? input.theater;
+  if (raw === undefined) {
+    return DEFAULT_WORKSPACE;
+  }
+
+  if (
+    typeof raw === 'string'
+    && (
+      (WORKSPACE_IDS as readonly string[]).includes(raw)
+      || (LEGACY_THEATER_ALIASES as readonly string[]).includes(raw)
+    )
+  ) {
+    return parseWorkspace(raw);
+  }
+
+  throw new Error(
+    `Invalid workspace. Expected one of: ${WORKSPACE_IDS.join(', ')}. Legacy theater aliases: ${LEGACY_THEATER_ALIASES.join(', ')}`,
+  );
+}
+
 function getRuntimeConfig(): RuntimeConfig {
   const baseUrl = process.env.BIG_BOSS_BASE_URL;
   const apiToken = process.env.BIG_BOSS_API_TOKEN;
@@ -267,43 +336,60 @@ async function handleToolCall(name: string, args: unknown): Promise<ToolResult> 
     const input = isRecord(args) ? args : {};
 
     switch (name) {
+      case 'list_workspaces': {
+        const result = await listBigBossWorkspaces(runtime);
+        return createToolResult(result);
+      }
       case 'get_snapshot': {
-        const theater = ensureTheater(input.theater);
+        const workspace = ensureWorkspaceInput(input);
         const include = ensureFeedList(input.include);
         const result = await getBigBossSnapshot({
           ...runtime,
-          theater,
+          workspace,
           include,
-        });
-
-        return createToolResult(result);
-      }
-      case 'search_intel': {
-        const query = typeof input.query === 'string' ? input.query : '';
-        const theater = ensureTheater(input.theater);
-        const feeds = ensureSearchableFeedList(input.feeds);
-        const limit = ensureOptionalLimit(input.limit, 50);
-        const result = await searchBigBossIntel({
-          ...runtime,
-          query,
-          theater,
-          feeds,
-          limit,
         });
 
         return createToolResult(result);
       }
       case 'get_feed': {
         const feed = ensureFeed(input.feed);
-        const theater = ensureTheater(input.theater);
+        const workspace = ensureWorkspaceInput(input);
         const limit = ensureOptionalLimit(input.limit, 100);
         const result = await getBigBossFeed({
           ...runtime,
           feed,
-          theater,
+          workspace,
           limit,
         });
 
+        return createToolResult(result);
+      }
+      case 'search_intel': {
+        const query = typeof input.query === 'string' ? input.query : '';
+        const workspace = ensureWorkspaceInput(input);
+        const feeds = ensureSearchableFeedList(input.feeds);
+        const limit = ensureOptionalLimit(input.limit, 50);
+        const result = await searchBigBossIntel({
+          ...runtime,
+          query,
+          workspace,
+          feeds,
+          limit,
+        });
+
+        return createToolResult(result);
+      }
+      case 'get_map_entities': {
+        const workspace = ensureWorkspaceInput(input);
+        const result = await getBigBossMapEntities({
+          ...runtime,
+          workspace,
+        });
+
+        return createToolResult(result);
+      }
+      case 'get_network_status': {
+        const result = await getBigBossNetworkStatus(runtime);
         return createToolResult(result);
       }
       default:
@@ -362,9 +448,10 @@ export function startBigBossMcpServer() {
                 version: SERVER_VERSION,
               },
               instructions: [
-                'BIG BOSS BOT MCP exposes on-demand read-only intel tools.',
-                `Default snapshot feeds: ${BIG_BOSS_MCP_DEFAULT_SNAPSHOT_FEEDS.join(', ')}`,
-                'Set BIG_BOSS_BASE_URL and BIG_BOSS_API_TOKEN before calling tools.',
+                'BIG BOSS BOT MCP exposes live workspace-aware intel tools.',
+                `Default global snapshot feeds: ${BIG_BOSS_MCP_DEFAULT_SNAPSHOT_FEEDS.join(', ')}`,
+                'Use workspace over theater. The theater field only exists for backward compatibility and maps middle-east and ukraine to global.',
+                'Set BIG_BOSS_BASE_URL and BIG_BOSS_API_TOKEN before calling tools. Network status requires read_network or use_network scope.',
               ].join(' '),
             }),
           );

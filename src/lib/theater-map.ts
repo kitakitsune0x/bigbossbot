@@ -1,5 +1,7 @@
 import type { TheaterId } from '@/lib/theater';
 
+type LegacyTheaterMapId = 'middle-east' | 'ukraine';
+
 export type TheaterCity = {
   name: string;
   lat: number;
@@ -38,7 +40,7 @@ export const NAVY_COLORS: Record<string, string> = {
   'Russian Navy': '#ff6666',
 };
 
-export const THEATER_MAP_CONFIG: Record<TheaterId, TheaterMapConfig> = {
+export const LEGACY_THEATER_MAP_CONFIG: Record<LegacyTheaterMapId, TheaterMapConfig> = {
   'middle-east': {
     center: [30.0, 48.0],
     zoom: 5,
@@ -260,6 +262,33 @@ export const THEATER_MAP_CONFIG: Record<TheaterId, TheaterMapConfig> = {
       'black sea': [44.8, 34.8],
       ukraine: [49.0, 32.0],
       russia: [51.2, 37.8],
+    },
+  },
+};
+
+export const THEATER_MAP_CONFIG: Record<TheaterId, TheaterMapConfig> = {
+  global: {
+    center: [22.0, 12.0],
+    zoom: 2,
+    cities: [
+      ...LEGACY_THEATER_MAP_CONFIG['middle-east'].cities,
+      ...LEGACY_THEATER_MAP_CONFIG.ukraine.cities,
+    ],
+    alertCities: {
+      ...LEGACY_THEATER_MAP_CONFIG['middle-east'].alertCities,
+      ...LEGACY_THEATER_MAP_CONFIG.ukraine.alertCities,
+    },
+    launchSites: [
+      ...LEGACY_THEATER_MAP_CONFIG['middle-east'].launchSites,
+      ...LEGACY_THEATER_MAP_CONFIG.ukraine.launchSites,
+    ],
+    strikeTargets: [
+      ...LEGACY_THEATER_MAP_CONFIG['middle-east'].strikeTargets,
+      ...LEGACY_THEATER_MAP_CONFIG.ukraine.strikeTargets,
+    ],
+    strikeLocations: {
+      ...LEGACY_THEATER_MAP_CONFIG['middle-east'].strikeLocations,
+      ...LEGACY_THEATER_MAP_CONFIG.ukraine.strikeLocations,
     },
   },
 };

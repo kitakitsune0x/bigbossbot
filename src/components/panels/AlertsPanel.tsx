@@ -80,9 +80,7 @@ export default function AlertsPanel() {
             <div className="px-3 py-2 bg-status-threat/10 border-b border-status-threat/20">
               <p className="text-[12px] font-semibold text-threat">INCOMING THREAT DETECTED</p>
               <p className="text-[10px] text-muted-foreground">
-                {preferences.theater === 'ukraine'
-                  ? 'Recent high-priority Ukraine alert headlines'
-                  : 'Pikud HaOref sirens activated'}
+                Recent high-priority alert activity across monitored regions
               </p>
             </div>
             {data?.alerts.map((alert, i) => (

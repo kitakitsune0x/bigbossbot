@@ -99,7 +99,7 @@ export default function LoginForm() {
       )}
 
       <p className="text-center text-xs leading-5 text-muted-foreground">
-        Protected access for live intelligence, theater monitoring, and operational alerts.
+        Protected access for live intelligence, global monitoring, and operational alerts.
       </p>
     </div>
   );

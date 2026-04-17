@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 import { AUTH_REQUIRE_2FA, AUTH_SERVICE_UNAVAILABLE_MESSAGE } from '@/lib/auth/config';
 import { getApiTokenAccessContext, getCurrentSessionContext, type ApiTokenAccessContext } from '@/lib/auth/service';
 import { isPrismaDatabaseConnectionError } from '@/lib/prisma';
-import type { SessionContext } from '@/types/auth';
+import type { ApiTokenScope, SessionContext } from '@/types/auth';
 
 // React cache() deduplicates within a single server render pass.
 // Layout + page calling requirePageSession() will only hit the DB once.
@@ -20,6 +20,18 @@ export type ReadApiAccessContext = SessionContext | ApiTokenAccessContext | Gues
 const GUEST_READ_ACCESS: GuestReadAccessContext = {
   authMethod: 'guest',
 };
+
+function apiTokenScopeAllows(scope: ApiTokenScope, requiredScope: ApiTokenScope) {
+  if (scope === requiredScope) {
+    return true;
+  }
+
+  if (scope === 'use_network') {
+    return requiredScope === 'read_network';
+  }
+
+  return false;
+}
 
 export async function getPageSession() {
   return getSession();
@@ -144,6 +156,40 @@ export async function authorizeAdminApiSession() {
 
   if (session.role !== 'admin') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  return session;
+}
+
+export async function authorizeNetworkApiAccess(requiredScope: Extract<ApiTokenScope, 'read_network' | 'use_network'> = 'read_network') {
+  const headerList = await headers();
+  const authorization = headerList.get('authorization')?.trim();
+
+  if (authorization) {
+    if (!authorization.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const rawToken = authorization.slice('Bearer '.length).trim();
+    if (!rawToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const tokenContext = await getApiTokenAccessContext(rawToken);
+    if (!tokenContext) {
+      return NextResponse.json({ error: 'Invalid or revoked API token' }, { status: 401 });
+    }
+
+    if (!apiTokenScopeAllows(tokenContext.apiTokenScope, requiredScope)) {
+      return NextResponse.json({ error: 'Token scope does not allow network access' }, { status: 403 });
+    }
+
+    return tokenContext;
+  }
+
+  const session = await authorizeApiSession();
+  if (session instanceof NextResponse) {
+    return session;
   }
 
   return session;

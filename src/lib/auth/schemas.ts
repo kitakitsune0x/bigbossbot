@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { DASHBOARD_PANEL_IDS } from '@/lib/auth/config';
 import { THEATER_IDS } from '@/lib/theater';
+import { WORKSPACE_IDS } from '@/lib/workspaces';
 
 export const usernameSchema = z
   .string()
@@ -52,12 +53,10 @@ const conflictMapPreferencesSchema = z.object({
 
 const dashboardUiStateSchema = z.object({
   conflictMap: z.object({
-    'middle-east': conflictMapPreferencesSchema,
-    ukraine: conflictMapPreferencesSchema,
+    global: conflictMapPreferencesSchema,
   }),
   regionalAlertsCollapsed: z.object({
-    'middle-east': z.array(z.string()),
-    ukraine: z.array(z.string()),
+    global: z.array(z.string()),
   }),
 });
 
@@ -67,6 +66,11 @@ export const preferencesPatchSchema = z.object({
   hiddenPanels: z.array(z.enum(DASHBOARD_PANEL_IDS)).max(DASHBOARD_PANEL_IDS.length).optional(),
   panelOrder: z.array(z.enum(DASHBOARD_PANEL_IDS)).max(DASHBOARD_PANEL_IDS.length).optional(),
   theater: z.enum(THEATER_IDS).optional(),
+  workspaceId: z.enum(WORKSPACE_IDS).optional(),
+  dashboardLayouts: z.partialRecord(
+    z.enum(WORKSPACE_IDS),
+    z.array(z.enum(DASHBOARD_PANEL_IDS)).max(DASHBOARD_PANEL_IDS.length),
+  ).optional(),
   uiState: dashboardUiStateSchema.optional(),
 }).refine((value) => Object.keys(value).length > 0, {
   message: 'At least one preference must be provided',
@@ -97,4 +101,5 @@ export const apiTokenCreateSchema = z.object({
     .trim()
     .min(2, 'Token name must be at least 2 characters')
     .max(48, 'Token name must be 48 characters or fewer'),
+  scope: z.enum(['read_intel', 'read_network', 'use_network']).default('read_intel'),
 });

@@ -1,0 +1,646 @@
+{
+  "412000001": {
+    "hull_number": "101",
+    "name": "Nanchang",
+    "class": "Type 055",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_055_destroyer"
+  },
+  "412000002": {
+    "hull_number": "102",
+    "name": "Lhasa",
+    "class": "Type 055",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_055_destroyer"
+  },
+  "412000003": {
+    "hull_number": "103",
+    "name": "Anshan",
+    "class": "Type 055",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_055_destroyer"
+  },
+  "412000004": {
+    "hull_number": "104",
+    "name": "Wuxi",
+    "class": "Type 055",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_055_destroyer"
+  },
+  "412000005": {
+    "hull_number": "105",
+    "name": "Dalian",
+    "class": "Type 055",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_055_destroyer"
+  },
+  "412000006": {
+    "hull_number": "106",
+    "name": "Yan'an",
+    "class": "Type 055",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_055_destroyer"
+  },
+  "412000007": {
+    "hull_number": "107",
+    "name": "Zunyi",
+    "class": "Type 055",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_055_destroyer"
+  },
+  "412000008": {
+    "hull_number": "108",
+    "name": "Xianyang",
+    "class": "Type 055",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_055_destroyer"
+  },
+  "412000101": {
+    "hull_number": "117",
+    "name": "Xining",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000102": {
+    "hull_number": "118",
+    "name": "Urumqi",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000103": {
+    "hull_number": "119",
+    "name": "Guiyang",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000104": {
+    "hull_number": "120",
+    "name": "Chengdu",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000105": {
+    "hull_number": "131",
+    "name": "Taiyuan",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000106": {
+    "hull_number": "132",
+    "name": "Suzhou",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000107": {
+    "hull_number": "133",
+    "name": "Nantong",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000108": {
+    "hull_number": "134",
+    "name": "Suqian",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000109": {
+    "hull_number": "135",
+    "name": "Lianyungang",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000110": {
+    "hull_number": "136",
+    "name": "Xuchang",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000111": {
+    "hull_number": "155",
+    "name": "Nanjing",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000112": {
+    "hull_number": "156",
+    "name": "Zibo",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000113": {
+    "hull_number": "157",
+    "name": "Lishui",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000114": {
+    "hull_number": "161",
+    "name": "Hohhot",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000115": {
+    "hull_number": "162",
+    "name": "Yancheng",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000116": {
+    "hull_number": "163",
+    "name": "Kaifeng",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000117": {
+    "hull_number": "164",
+    "name": "Taizhou",
+    "class": "Type 052D",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412000201": {
+    "hull_number": "538",
+    "name": "Yantai",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000202": {
+    "hull_number": "539",
+    "name": "Wuhu",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000203": {
+    "hull_number": "540",
+    "name": "Huainan",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000204": {
+    "hull_number": "541",
+    "name": "Huaihua",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000205": {
+    "hull_number": "542",
+    "name": "Zaozhuang",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000206": {
+    "hull_number": "529",
+    "name": "Zhoushan",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000207": {
+    "hull_number": "530",
+    "name": "Xuzhou",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000208": {
+    "hull_number": "531",
+    "name": "Xiangtan",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000209": {
+    "hull_number": "532",
+    "name": "Jingzhou",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000210": {
+    "hull_number": "536",
+    "name": "Xuchang",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000211": {
+    "hull_number": "546",
+    "name": "Yancheng",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000212": {
+    "hull_number": "547",
+    "name": "Linyi",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000213": {
+    "hull_number": "548",
+    "name": "Yiyang",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000214": {
+    "hull_number": "549",
+    "name": "Changzhou",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000215": {
+    "hull_number": "550",
+    "name": "Weifang",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000301": {
+    "hull_number": "31",
+    "name": "Hainan",
+    "class": "Type 075",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_075_landing_helicopter_dock"
+  },
+  "412000302": {
+    "hull_number": "32",
+    "name": "Guangxi",
+    "class": "Type 075",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_075_landing_helicopter_dock"
+  },
+  "412000303": {
+    "hull_number": "33",
+    "name": "Anhui",
+    "class": "Type 075",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_075_landing_helicopter_dock"
+  },
+  "412000401": {
+    "hull_number": "16",
+    "name": "Liaoning",
+    "class": "Type 001",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Chinese_aircraft_carrier_Liaoning"
+  },
+  "412000402": {
+    "hull_number": "17",
+    "name": "Shandong",
+    "class": "Type 002",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Chinese_aircraft_carrier_Shandong"
+  },
+  "412000403": {
+    "hull_number": "18",
+    "name": "Fujian",
+    "class": "Type 003",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Chinese_aircraft_carrier_Fujian"
+  },
+  "412000501": {
+    "hull_number": "980",
+    "name": "Hulunhu",
+    "class": "Type 901",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_901_replenishment_ship"
+  },
+  "412000502": {
+    "hull_number": "981",
+    "name": "Chaganhu",
+    "class": "Type 901",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_901_replenishment_ship"
+  },
+  "412000601": {
+    "hull_number": "998",
+    "name": "Kunlun Shan",
+    "class": "Type 071",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_071_amphibious_transport_dock"
+  },
+  "412000602": {
+    "hull_number": "999",
+    "name": "Jinggang Shan",
+    "class": "Type 071",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_071_amphibious_transport_dock"
+  },
+  "412000603": {
+    "hull_number": "989",
+    "name": "Changbai Shan",
+    "class": "Type 071",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_071_amphibious_transport_dock"
+  },
+  "412000604": {
+    "hull_number": "988",
+    "name": "Yimeng Shan",
+    "class": "Type 071",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_071_amphibious_transport_dock"
+  },
+  "412000605": {
+    "hull_number": "987",
+    "name": "Wuzhi Shan",
+    "class": "Type 071",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_071_amphibious_transport_dock"
+  },
+  "412000606": {
+    "hull_number": "986",
+    "name": "Longhu Shan",
+    "class": "Type 071",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_071_amphibious_transport_dock"
+  },
+  "412000607": {
+    "hull_number": "985",
+    "name": "Dabie Shan",
+    "class": "Type 071",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_071_amphibious_transport_dock"
+  },
+  "412000608": {
+    "hull_number": "984",
+    "name": "Wuyi Shan",
+    "class": "Type 071",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_071_amphibious_transport_dock"
+  },
+  "412000701": {
+    "hull_number": "815A-1",
+    "name": "Dongdiao",
+    "class": "Type 815A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_815_electronic_reconnaissance_ship"
+  },
+  "412000702": {
+    "hull_number": "815A-2",
+    "name": "Haiwangxing",
+    "class": "Type 815A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_815_electronic_reconnaissance_ship"
+  },
+  "412000703": {
+    "hull_number": "815A-3",
+    "name": "Tianwangxing",
+    "class": "Type 815A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_815_electronic_reconnaissance_ship"
+  },
+  "412009001": {
+    "hull_number": "2901",
+    "name": "CCG 2901",
+    "class": "12000-ton Cutter",
+    "force": "CCG",
+    "wiki": "https://en.wikipedia.org/wiki/China_Coast_Guard"
+  },
+  "412009002": {
+    "hull_number": "3901",
+    "name": "CCG 3901",
+    "class": "12000-ton Cutter",
+    "force": "CCG",
+    "wiki": "https://en.wikipedia.org/wiki/China_Coast_Guard"
+  },
+  "412009003": {
+    "hull_number": "1305",
+    "name": "CCG 1305",
+    "class": "Type 818",
+    "force": "CCG",
+    "wiki": "https://en.wikipedia.org/wiki/China_Coast_Guard"
+  },
+  "412009004": {
+    "hull_number": "1306",
+    "name": "CCG 1306",
+    "class": "Type 818",
+    "force": "CCG",
+    "wiki": "https://en.wikipedia.org/wiki/China_Coast_Guard"
+  },
+  "412009005": {
+    "hull_number": "2502",
+    "name": "CCG 2502",
+    "class": "5000-ton Cutter",
+    "force": "CCG",
+    "wiki": "https://en.wikipedia.org/wiki/China_Coast_Guard"
+  },
+  "412009006": {
+    "hull_number": "2302",
+    "name": "CCG 2302",
+    "class": "3000-ton Cutter",
+    "force": "CCG",
+    "wiki": "https://en.wikipedia.org/wiki/China_Coast_Guard"
+  },
+  "412009007": {
+    "hull_number": "2303",
+    "name": "CCG 2303",
+    "class": "3000-ton Cutter",
+    "force": "CCG",
+    "wiki": "https://en.wikipedia.org/wiki/China_Coast_Guard"
+  },
+  "412009008": {
+    "hull_number": "1103",
+    "name": "CCG 1103",
+    "class": "Type 718B",
+    "force": "CCG",
+    "wiki": "https://en.wikipedia.org/wiki/China_Coast_Guard"
+  },
+  "412009009": {
+    "hull_number": "1105",
+    "name": "CCG 1105",
+    "class": "Type 718B",
+    "force": "CCG",
+    "wiki": "https://en.wikipedia.org/wiki/China_Coast_Guard"
+  },
+  "412009010": {
+    "hull_number": "1302",
+    "name": "CCG 1302",
+    "class": "Type 818",
+    "force": "CCG",
+    "wiki": "https://en.wikipedia.org/wiki/China_Coast_Guard"
+  },
+  "412000801": {
+    "hull_number": "171",
+    "name": "Haikou",
+    "class": "Type 052C",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052C_destroyer"
+  },
+  "412000802": {
+    "hull_number": "170",
+    "name": "Lanzhou",
+    "class": "Type 052C",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052C_destroyer"
+  },
+  "412000803": {
+    "hull_number": "150",
+    "name": "Changchun",
+    "class": "Type 052C",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052C_destroyer"
+  },
+  "412000804": {
+    "hull_number": "151",
+    "name": "Zhengzhou",
+    "class": "Type 052C",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052C_destroyer"
+  },
+  "412000805": {
+    "hull_number": "152",
+    "name": "Jinan",
+    "class": "Type 052C",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052C_destroyer"
+  },
+  "412000806": {
+    "hull_number": "153",
+    "name": "Xi'an",
+    "class": "Type 052C",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052C_destroyer"
+  },
+  "412000901": {
+    "hull_number": "572",
+    "name": "Hengshui",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000902": {
+    "hull_number": "573",
+    "name": "Liuzhou",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000903": {
+    "hull_number": "574",
+    "name": "Sanya",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000904": {
+    "hull_number": "575",
+    "name": "Yueyang",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000905": {
+    "hull_number": "576",
+    "name": "Daqing",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412000906": {
+    "hull_number": "577",
+    "name": "Huanggang",
+    "class": "Type 054A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_054A_frigate"
+  },
+  "412001001": {
+    "hull_number": "500",
+    "name": "Xianfeng",
+    "class": "Type 056A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_056_corvette"
+  },
+  "412001002": {
+    "hull_number": "501",
+    "name": "Xinyang",
+    "class": "Type 056A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_056_corvette"
+  },
+  "412001003": {
+    "hull_number": "502",
+    "name": "Huangshi",
+    "class": "Type 056",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_056_corvette"
+  },
+  "412001004": {
+    "hull_number": "509",
+    "name": "Huaian",
+    "class": "Type 056A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_056_corvette"
+  },
+  "412001005": {
+    "hull_number": "510",
+    "name": "Ningde",
+    "class": "Type 056A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_056_corvette"
+  },
+  "412001101": {
+    "hull_number": "795",
+    "name": "Nanchong",
+    "class": "Type 039A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_039A_submarine"
+  },
+  "412001201": {
+    "hull_number": "892",
+    "name": "Hualuoshan",
+    "class": "Type 903A",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_903_replenishment_ship"
+  },
+  "412001202": {
+    "hull_number": "889",
+    "name": "Taihu",
+    "class": "Type 903",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_903_replenishment_ship"
+  },
+  "412001301": {
+    "hull_number": "636",
+    "name": "Nanning",
+    "class": "Type 052DL",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412001302": {
+    "hull_number": "165",
+    "name": "Zhanjiang",
+    "class": "Type 052DL",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  },
+  "412001303": {
+    "hull_number": "166",
+    "name": "Huainan",
+    "class": "Type 052DL",
+    "force": "PLAN",
+    "wiki": "https://en.wikipedia.org/wiki/Type_052D_destroyer"
+  }
+}

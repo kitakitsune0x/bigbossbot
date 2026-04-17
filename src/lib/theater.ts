@@ -1,34 +1,36 @@
 import type { NextRequest } from 'next/server';
 
-export const THEATER_IDS = ['middle-east', 'ukraine'] as const;
+export const THEATER_IDS = ['global'] as const;
+export const LEGACY_THEATER_ALIASES = ['middle-east', 'ukraine'] as const;
+export const THEATER_QUERY_VALUES = [...THEATER_IDS, ...LEGACY_THEATER_ALIASES] as const;
 
 export type TheaterId = (typeof THEATER_IDS)[number];
+export type LegacyTheaterAlias = (typeof LEGACY_THEATER_ALIASES)[number];
 
-export const DEFAULT_THEATER: TheaterId = 'middle-east';
+export const DEFAULT_THEATER: TheaterId = 'global';
 
 export const THEATER_META: Record<TheaterId, {
   label: string;
   shortLabel: string;
   alertSourceLabel: string;
 }> = {
-  'middle-east': {
-    label: 'Middle East',
-    shortLabel: 'ME',
-    alertSourceLabel: 'Pikud HaOref',
-  },
-  ukraine: {
-    label: 'Ukraine',
-    shortLabel: 'UA',
-    alertSourceLabel: 'Google News monitor',
+  global: {
+    label: 'Global',
+    shortLabel: 'GLB',
+    alertSourceLabel: 'Multi-source monitor',
   },
 };
 
 export function parseTheater(value: unknown): TheaterId {
-  if (typeof value === 'string' && (THEATER_IDS as readonly string[]).includes(value)) {
-    return value as TheaterId;
+  if (typeof value === 'string' && (THEATER_QUERY_VALUES as readonly string[]).includes(value)) {
+    return DEFAULT_THEATER;
   }
 
   return DEFAULT_THEATER;
+}
+
+export function isLegacyTheaterAlias(value: unknown): value is LegacyTheaterAlias {
+  return typeof value === 'string' && (LEGACY_THEATER_ALIASES as readonly string[]).includes(value);
 }
 
 export function getTheaterFromRequest(request: NextRequest): TheaterId {
@@ -37,5 +39,5 @@ export function getTheaterFromRequest(request: NextRequest): TheaterId {
 
 export function buildTheaterApiPath(path: string, theater: TheaterId) {
   const separator = path.includes('?') ? '&' : '?';
-  return `${path}${separator}theater=${theater}`;
+  return `${path}${separator}theater=${parseTheater(theater)}`;
 }

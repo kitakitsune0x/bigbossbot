@@ -17,11 +17,34 @@ services:
     networks:
       - internal
 
+  intel:
+    build:
+      context: .
+      dockerfile: intel-service/Dockerfile
+    container_name: big-boss-intel-prod
+    restart: unless-stopped
+    environment:
+      INTEL_SHARED_SECRET: ${INTEL_SHARED_SECRET:?Set INTEL_SHARED_SECRET in .env.production}
+      INTEL_LOG_LEVEL: ${INTEL_LOG_LEVEL:-INFO}
+    expose:
+      - "8000"
+    volumes:
+      - big-boss-intel-data:/app/intel-vendor/backend/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
   app:
     image: ${BIG_BOSS_IMAGE:-ghcr.io/kitakitsune0x/bigbossbot:latest}
     container_name: big-boss-app-prod
     restart: unless-stopped
     depends_on:
+      intel:
+        condition: service_healthy
       postgres:
         condition: service_healthy
     environment:
@@ -36,6 +59,8 @@ services:
       AUTH_REQUIRE_2FA: ${AUTH_REQUIRE_2FA:-false}
       BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      INTEL_SERVICE_URL: http://intel:8000
+      INTEL_SHARED_SECRET: ${INTEL_SHARED_SECRET:?Set INTEL_SHARED_SECRET in .env.production}
     expose:
       - "3000"
     healthcheck:
@@ -91,5 +116,6 @@ networks:
 
 volumes:
   big-boss-postgres-data:
+  big-boss-intel-data:
   caddy-data:
   caddy-config:

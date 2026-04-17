@@ -48,7 +48,7 @@ export default async function LoginPage() {
                 Live intelligence, alerts, and market context in one protected workspace.
               </h1>
               <p className="max-w-lg text-sm leading-7 text-white/78">
-                Review theater-specific feeds and operational dashboards behind a single authenticated sign-in.
+                Review global feeds and operational dashboards behind a single authenticated sign-in.
               </p>
             </div>
 
@@ -63,7 +63,7 @@ export default async function LoginPage() {
               </div>
               <div className="rounded-xl border border-white/10 bg-black/35 p-4 backdrop-blur-sm">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">Coverage</p>
-                <p className="mt-2 text-sm font-medium text-white">Middle East and Ukraine theaters</p>
+                <p className="mt-2 text-sm font-medium text-white">Global intelligence workspace</p>
               </div>
               <div className="rounded-xl border border-white/10 bg-black/35 p-4 backdrop-blur-sm">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">Signal</p>
